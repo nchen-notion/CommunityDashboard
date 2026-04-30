@@ -15,6 +15,7 @@ def get_count(url: str) -> int | None:
     """Fetch a Notion creator page (e.g. notion.com/@vaniadev) and count their templates."""
     if not url:
         return None
+    url = _normalize(url)
     try:
         resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
         resp.raise_for_status()
@@ -35,3 +36,8 @@ def get_count(url: str) -> int | None:
         return len(paths)
 
     return None
+
+
+def _normalize(url: str) -> str:
+    """Strip locale prefix (e.g. /ko/, /ja/) so the page renders in English."""
+    return re.sub(r'(notion\.(?:com|so))/[a-z]{2}(/@)', r'\1\2', url)
