@@ -38,6 +38,15 @@ PLATFORM_CONFIDENCE_COL = {
     "notion_mp": "notion_confidence",
 }
 
+# Per-platform accepted confidences when --high-confidence-only is set.
+# Instagram accepts medium too because IG bios rarely surface corroborating
+# signals (no website / no email domain), so most real matches land at medium.
+ACCEPTED_CONFIDENCES = {
+    "youtube": {"high"},
+    "instagram": {"high", "medium"},
+    "notion_mp": {"high"},
+}
+
 
 def enrich_person(person: dict, platforms: list[str], do_verify: bool, high_confidence_only: bool = False) -> dict:
     row = dict(person)
@@ -71,7 +80,7 @@ def enrich_person(person: dict, platforms: list[str], do_verify: bool, high_conf
 
         if best:
             row[conf_col] = confidence
-            if high_confidence_only and confidence != "high":
+            if high_confidence_only and confidence not in ACCEPTED_CONFIDENCES[platform]:
                 row[url_col] = ""
             else:
                 row[url_col] = best.get(PLATFORM_URL_KEY[platform], "")
