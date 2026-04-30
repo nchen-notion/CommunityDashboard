@@ -8,22 +8,30 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
+URL_FIELDS = {
+    "youtube": "Youtube",
+    "instagram": "Instagram",
+    "notion_templates": "Notion Templates",
+    "twitter": "Twitter",
+    "tiktok": "TikTok",
+}
 
-def fetch_people(database_id: str, skip_if_filled: str = "") -> list[dict]:
-    """Fetch all rows from a Notion database and return as person dicts with page_id.
+COUNT_FIELDS = {
+    "youtube": "Youtube Followers",
+    "instagram": "Instagram Followers",
+    "notion_templates": "Templates Made",
+    "twitter": "Twitter Followers",
+    "tiktok": "TikTok Followers",
+}
 
-    skip_if_filled: if set, skip rows that already have a value for that person dict key
-    (e.g. 'youtube_handle' skips rows where Youtube Handle is already populated).
-    """
+
+def fetch_people(database_id: str) -> list[dict]:
     people = []
     cursor = None
-    skipped = 0
-
     while True:
         body = {"page_size": 100}
         if cursor:
             body["start_cursor"] = cursor
-
         resp = requests.post(
             f"https://api.notion.com/v1/databases/{database_id}/query",
             headers=HEADERS,
@@ -31,22 +39,14 @@ def fetch_people(database_id: str, skip_if_filled: str = "") -> list[dict]:
         )
         resp.raise_for_status()
         data = resp.json()
-
         for page in data.get("results", []):
             person = _parse_page(page)
             if not person.get("name"):
                 continue
-            if skip_if_filled and person.get(skip_if_filled):
-                skipped += 1
-                continue
             people.append(person)
-
         if not data.get("has_more"):
             break
         cursor = data.get("next_cursor")
-
-    if skipped:
-        print(f"Skipped {skipped} rows already having {skip_if_filled}.")
     return people
 
 
@@ -57,67 +57,31 @@ def _parse_page(page: dict) -> dict:
         items = props.get(key, {}).get("title", [])
         return "".join(t.get("plain_text", "") for t in items).strip()
 
-    def get_text(key):
-        items = props.get(key, {}).get("rich_text", [])
-        return "".join(t.get("plain_text", "") for t in items).strip()
-
-    def get_email(key):
-        return props.get(key, {}).get("email", "") or ""
-
     def get_url(key):
         return props.get(key, {}).get("url", "") or ""
 
-    return {
+    def get_number(key):
+        return props.get(key, {}).get("number")
+
+    person = {
         "page_id": page["id"],
         "name": get_title("Name"),
-        "email": get_email("Email"),
-        "company": "",
-        "location": f"{get_text('City')}, {get_text('Country')}".strip(", "),
-        "website": get_url("Website"),
-        "linkedin_url": get_text("LinkedIn URL"),
-        "youtube_handle": get_text("Youtube Handle"),
     }
+    for platform, field in URL_FIELDS.items():
+        person[f"{platform}_url"] = get_url(field)
+    for platform, field in COUNT_FIELDS.items():
+        person[f"{platform}_count"] = get_number(field)
+    return person
 
 
-def update_page(page_id: str, result: dict):
-    """Write enrichment results back to a Notion page."""
-
-    def text_prop(val):
-        return {"rich_text": [{"text": {"content": str(val or "")[:2000]}}]}
-
-    def select_prop(val):
-        if not val or val == "none":
-            return {"select": None}
-        return {"select": {"name": str(val)}}
-
-    def checkbox_prop(val):
-        return {"checkbox": bool(val)}
-
+def update_page(page_id: str, counts: dict[str, int | None]):
+    """counts maps platform key -> count (or None to clear). Only platforms in dict are written."""
     properties = {}
-
-    # Confidence fields are only present in `result` when enrich_person actually ran
-    # that platform — _parse_page does NOT read them back from Notion. Use them as
-    # the per-platform "did we run this?" indicator so single-platform runs never
-    # touch other platforms' columns.
-    if "youtube_confidence" in result:
-        properties["Youtube Handle"] = text_prop(result.get("youtube_handle", ""))
-        properties["YouTube Confidence"] = select_prop(result["youtube_confidence"])
-    if "instagram_confidence" in result:
-        properties["Instagram Handle"] = text_prop(result.get("instagram_handle", ""))
-        properties["Instagram Confidence"] = select_prop(result["instagram_confidence"])
-        if result.get("instagram_followers") is not None:
-            properties["Instagram Followers"] = {"number": result["instagram_followers"] or None}
-    if "notion_confidence" in result:
-        properties["Notion Marketplace URL"] = text_prop(result.get("notion_marketplace_url", ""))
-        properties["Notion Confidence"] = select_prop(result["notion_confidence"])
-
-    # Only ever raise the Needs Review flag — never clear it from a prior run.
-    # A user manually unchecks it in Notion when they've reviewed.
-    if result.get("needs_review"):
-        properties["Needs Review"] = checkbox_prop(True)
-    if result.get("notes"):
-        properties["Enricher Notes"] = text_prop(result["notes"])
-
+    for platform, count in counts.items():
+        field = COUNT_FIELDS[platform]
+        properties[field] = {"number": count if count is not None else None}
+    if not properties:
+        return
     resp = requests.patch(
         f"https://api.notion.com/v1/pages/{page_id}",
         headers=HEADERS,

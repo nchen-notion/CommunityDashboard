@@ -4,187 +4,100 @@ import argparse
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import pandas as pd
 
-from config import MISSING
-import verify
-import output as out
+from config import MISSING, NOTION_DATABASE_ID
 import notion_io
-from sources import youtube, instagram, notion_mp
+from sources import youtube, instagram, tiktok, twitter, notion_templates
 
-ALL_PLATFORMS = ["youtube", "instagram", "notion_mp"]
-
-PLATFORM_MODULES = {
+PLATFORMS = {
     "youtube": youtube,
     "instagram": instagram,
-    "notion_mp": notion_mp,
-}
-
-PLATFORM_URL_KEY = {
-    "youtube": "url",
-    "instagram": "url",
-    "notion_mp": "url",
-}
-
-PLATFORM_OUTPUT_COL = {
-    "youtube": "youtube_handle",
-    "instagram": "instagram_handle",
-    "notion_mp": "notion_marketplace_url",
-}
-
-PLATFORM_CONFIDENCE_COL = {
-    "youtube": "youtube_confidence",
-    "instagram": "instagram_confidence",
-    "notion_mp": "notion_confidence",
-}
-
-# Per-platform accepted confidences when --high-confidence-only is set.
-# Instagram and Notion MP accept medium because their candidate data rarely
-# surfaces corroborating signals (IG bios are personal; Marketplace pages only
-# expose title + description). For Notion MP the query itself already filters
-# strongly: `"name" site:notion.so/marketplace`, so a name match is reliable.
-ACCEPTED_CONFIDENCES = {
-    "youtube": {"high"},
-    "instagram": {"high", "medium"},
-    "notion_mp": {"high", "medium"},
+    "tiktok": tiktok,
+    "twitter": twitter,
+    "notion_templates": notion_templates,
 }
 
 
-def enrich_person(person: dict, platforms: list[str], do_verify: bool, high_confidence_only: bool = False) -> dict:
-    row = dict(person)
-    all_notes = []
-    has_low = False
-
+def fetch_counts(person: dict, platforms: list[str]) -> dict[str, int | None]:
+    counts: dict[str, int | None] = {}
     for platform in platforms:
-        url_col = PLATFORM_OUTPUT_COL[platform]
-        conf_col = PLATFORM_CONFIDENCE_COL[platform]
-
-        print(f"  [{platform}] searching...")
+        url = person.get(f"{platform}_url", "")
+        if not url:
+            continue
         try:
-            candidates = PLATFORM_MODULES[platform].search(person)
+            counts[platform] = PLATFORMS[platform].get_count(url)
         except Exception as e:
             print(f"  [{platform}] error: {e}")
-            row[url_col] = ""
-            row[conf_col] = "none"
-            continue
-
-        if not candidates:
-            row[url_col] = ""
-            row[conf_col] = "none"
-            continue
-
-        if do_verify:
-            best, confidence, reasoning = verify.score_candidates(person, platform, candidates)
-        else:
-            best = candidates[0]
-            confidence = "medium"
-            reasoning = "Unverified (--no-verify mode)"
-
-        if best:
-            row[conf_col] = confidence
-            if high_confidence_only and confidence not in ACCEPTED_CONFIDENCES[platform]:
-                row[url_col] = ""
-            else:
-                row[url_col] = best.get(PLATFORM_URL_KEY[platform], "")
-            if platform == "instagram" and best.get("followers"):
-                row["instagram_followers"] = best["followers"]
-            if reasoning:
-                all_notes.append(f"{platform}: {reasoning}")
-            if confidence == "low":
-                has_low = True
-        else:
-            row[url_col] = ""
-            row[conf_col] = "none"
-
-    row["needs_review"] = has_low
-    row["notes"] = " | ".join(all_notes)
-    return row
+            counts[platform] = None
+    return counts
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Enrich a CSV of people with social media handles.")
-    parser.add_argument("--input", help="Input CSV path")
-    parser.add_argument("--output", help="Output CSV path")
-    parser.add_argument("--notion-input", metavar="DATABASE_ID", help="Read from and write back to a Notion database")
-    parser.add_argument("--notion", action="store_true", help="Also write results to Notion database (CSV input mode)")
+    parser = argparse.ArgumentParser(description="Scrape follower/subscriber counts from URLs in Notion.")
+    parser.add_argument(
+        "--notion-input",
+        metavar="DATABASE_ID",
+        default=NOTION_DATABASE_ID,
+        help="Notion database ID (defaults to NOTION_DATABASE_ID env var)",
+    )
     parser.add_argument(
         "--platforms",
-        default=",".join(ALL_PLATFORMS),
-        help=f"Comma-separated platforms to run (default: all). Options: {', '.join(ALL_PLATFORMS)}",
+        default=",".join(PLATFORMS.keys()),
+        help=f"Platforms to run (default: all). Options: {', '.join(PLATFORMS)}",
     )
-    parser.add_argument("--no-verify", action="store_true", help="Skip Claude verification (faster, less accurate)")
-    parser.add_argument("--workers", type=int, default=1, help="Number of concurrent workers (default: 1)")
-    parser.add_argument("--skip-if-filled", metavar="FIELD", help="Skip rows where this field is already populated (e.g. youtube_handle)")
-    parser.add_argument("--high-confidence-only", action="store_true", help="Only write handle/URL if confidence is high; leave blank otherwise")
+    parser.add_argument("--workers", type=int, default=4, help="Concurrent workers (default: 4)")
+    parser.add_argument(
+        "--skip-if-filled",
+        action="store_true",
+        help="Skip a platform on a row if its count field is already populated",
+    )
+    parser.add_argument("--limit", type=int, help="Process only first N rows (for testing)")
     args = parser.parse_args()
 
     if MISSING:
         print(f"WARNING: Missing API keys: {', '.join(MISSING)}")
-        print("Some platforms may be skipped. Add them to your .env file.")
 
-    platforms = [p.strip() for p in args.platforms.split(",") if p.strip() in PLATFORM_MODULES]
+    if not args.notion_input:
+        print("Provide --notion-input DATABASE_ID or set NOTION_DATABASE_ID in .env.local")
+        sys.exit(1)
+
+    platforms = [p.strip() for p in args.platforms.split(",") if p.strip() in PLATFORMS]
     if not platforms:
-        print(f"No valid platforms specified. Choose from: {', '.join(ALL_PLATFORMS)}")
+        print(f"No valid platforms. Choose from: {', '.join(PLATFORMS)}")
         sys.exit(1)
 
-    # --- load people ---
-    if args.notion_input:
-        print(f"Reading from Notion database {args.notion_input}...")
-        people = notion_io.fetch_people(args.notion_input, skip_if_filled=args.skip_if_filled or "")
-        print(f"Found {len(people)} people.\n")
-    elif args.input:
-        try:
-            df = pd.read_csv(args.input)
-        except Exception as e:
-            print(f"Failed to read input CSV: {e}")
-            sys.exit(1)
-        if "name" not in df.columns or "email" not in df.columns:
-            print("Input CSV must have 'name' and 'email' columns.")
-            sys.exit(1)
-        people = df.to_dict(orient="records")
-    else:
-        print("Provide either --input (CSV) or --notion-input (database ID).")
-        sys.exit(1)
+    print(f"Reading from Notion database {args.notion_input}...")
+    people = notion_io.fetch_people(args.notion_input)
+    print(f"Found {len(people)} people.\n")
 
-    # --- enrich ---
+    if args.limit:
+        people = people[: args.limit]
+
     print_lock = threading.Lock()
-    results = [None] * len(people)
 
-    def process(i, person):
+    def process(i: int, person: dict):
         name = person.get("name", "?")
-        try:
-            row = enrich_person(person, platforms, do_verify=not args.no_verify, high_confidence_only=args.high_confidence_only)
-        except Exception as e:
+        active = [p for p in platforms if person.get(f"{p}_url")]
+        if args.skip_if_filled:
+            active = [p for p in active if person.get(f"{p}_count") is None]
+        if not active:
             with print_lock:
-                print(f"[{i+1}/{len(people)}] {name} — ERROR: {e}")
-            row = dict(person)
-            for platform in platforms:
-                row[PLATFORM_OUTPUT_COL[platform]] = ""
-                row[PLATFORM_CONFIDENCE_COL[platform]] = "none"
-            row["needs_review"] = True
-            row["notes"] = f"Pipeline error: {e}"
+                print(f"[{i+1}/{len(people)}] {name} — nothing to do")
+            return
 
-        if args.notion_input and person.get("page_id"):
-            notion_io.update_page(person["page_id"], row)
-
+        counts = fetch_counts(person, active)
+        if person.get("page_id") and counts:
+            notion_io.update_page(person["page_id"], counts)
         with print_lock:
-            print(f"[{i+1}/{len(people)}] {name} → {row.get('instagram_handle') or row.get('youtube_handle') or 'none'} ({row.get('instagram_confidence') or row.get('youtube_confidence') or 'none'})")
+            summary = ", ".join(f"{p}={counts.get(p)}" for p in active)
+            print(f"[{i+1}/{len(people)}] {name} → {summary}")
 
-        results[i] = row
+    with ThreadPoolExecutor(max_workers=args.workers) as ex:
+        futures = [ex.submit(process, i, p) for i, p in enumerate(people)]
+        for f in as_completed(futures):
+            f.result()
 
-    with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = {executor.submit(process, i, person): i for i, person in enumerate(people)}
-        for future in as_completed(futures):
-            future.result()  # surface exceptions
-
-    # --- output ---
-    if args.output:
-        out.write_csv(results, args.output)
-    if args.notion and not args.notion_input:
-        out.write_notion(results)
-
-    needs_review = sum(1 for r in results if r.get("needs_review"))
-    print(f"\nDone. {len(people)} people processed. {needs_review} flagged for review.")
+    print(f"\nDone. {len(people)} rows processed.")
 
 
 if __name__ == "__main__":

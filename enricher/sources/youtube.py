@@ -1,58 +1,62 @@
 from __future__ import annotations
-import time
+import re
 import requests
-from config import APIFY_TOKEN
 
-RUN_URL = "https://api.apify.com/v2/acts/h7sDV53CddomktSi5/run-sync-get-dataset-items"
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 
-def search(person: dict) -> list[dict]:
-    """Return up to 3 candidate YouTube channels via Apify YouTube Scraper."""
-    if not APIFY_TOKEN:
-        return []
-
-    query_parts = [person["name"]]
-    if person.get("company"):
-        query_parts.append(person["company"])
-    query = " ".join(query_parts)
-
+def get_count(url: str) -> int | None:
+    """Fetch a YouTube channel page and extract subscriber count from embedded JSON."""
+    if not url:
+        return None
     try:
-        resp = requests.post(
-            RUN_URL,
-            params={"token": APIFY_TOKEN, "timeout": 60},
-            json={"searchKeywords": query, "maxResults": 9},
-            timeout=90,
-        )
+        resp = requests.get(url, headers=HEADERS, timeout=30)
         resp.raise_for_status()
-        items = resp.json()
     except Exception as e:
-        print(f"  [youtube] Apify error: {e}")
-        try:
-            time.sleep(5)
-            resp = requests.post(
-                RUN_URL,
-                params={"token": APIFY_TOKEN, "timeout": 60},
-                json={"searchKeywords": query, "maxResults": 9},
-                timeout=90,
-            )
-            resp.raise_for_status()
-            items = resp.json()
-        except Exception as e2:
-            print(f"  [youtube] retry failed: {e2}")
-            return []
+        print(f"    youtube fetch error: {e}")
+        return None
 
-    # deduplicate by channelId, keep top 3 unique channels
-    seen = {}
-    for item in items:
-        channel_id = item.get("channelId", "")
-        if channel_id and channel_id not in seen:
-            seen[channel_id] = {
-                "url": item.get("channelUrl", f"https://www.youtube.com/channel/{channel_id}"),
-                "handle": item.get("channelUsername", ""),
-                "name": item.get("channelName", ""),
-                "subscribers": item.get("numberOfSubscribers", 0),
-            }
-        if len(seen) >= 3:
-            break
+    html = resp.text
 
-    return list(seen.values())
+    # Preferred: ytInitialData carries an exact subscriber count for channel pages.
+    m = re.search(r'"subscriberCountText":\s*\{[^}]*?"simpleText":\s*"([^"]+)"', html)
+    if not m:
+        m = re.search(
+            r'"subscriberCountText":\s*\{[^}]*?"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"',
+            html,
+        )
+    if not m:
+        # Newer schema sometimes uses "content" inside "metadataParts"
+        m = re.search(r'"(\d[\d.,KMB\s]*subscribers?)"', html, re.IGNORECASE)
+    if not m:
+        return None
+
+    return _parse_count(m.group(1))
+
+
+def _parse_count(text: str) -> int | None:
+    """Parse strings like '1.2M subscribers', '345K', '12,345 subscribers'."""
+    s = text.strip().lower().replace("subscribers", "").replace("subscriber", "").strip()
+    s = s.replace(",", "")
+    if not s:
+        return None
+    multiplier = 1
+    if s.endswith("k"):
+        multiplier = 1_000
+        s = s[:-1]
+    elif s.endswith("m"):
+        multiplier = 1_000_000
+        s = s[:-1]
+    elif s.endswith("b"):
+        multiplier = 1_000_000_000
+        s = s[:-1]
+    try:
+        return int(float(s.strip()) * multiplier)
+    except ValueError:
+        return None

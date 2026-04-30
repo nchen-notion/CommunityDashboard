@@ -1,31 +1,27 @@
-name: Social Enricher
+name: Follower Counts
 
 on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: "Platforms to run (comma-separated: youtube, instagram, notion_mp)"
+        description: "Comma-separated platforms (youtube, instagram, tiktok, twitter, notion_templates)"
         required: true
-        default: "instagram"
+        default: "youtube,notion_templates"
       workers:
         description: "Concurrent workers"
         required: true
-        default: "5"
-      no_verify:
-        description: "Skip Claude verification (true/false)"
+        default: "4"
+      skip_if_filled:
+        description: "Skip a platform on rows where its count is already populated (true/false)"
         required: false
         default: "false"
-      skip_if_filled:
-        description: "Skip rows where this field is already filled (e.g. youtube_handle)"
+      limit:
+        description: "Process only the first N rows (blank for all)"
         required: false
         default: ""
-      high_confidence_only:
-        description: "Only write handle if confidence is high (true/false)"
-        required: false
-        default: "true"
 
 jobs:
-  enrich:
+  fetch-counts:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -40,22 +36,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run enricher
+      - name: Run scraper
         working-directory: enricher
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
         run: |
-          ARGS="--notion-input ${{ secrets.NOTION_DATABASE_ID }} --platforms ${{ github.event.inputs.platforms }} --workers ${{ github.event.inputs.workers }}"
-          if [ "${{ github.event.inputs.no_verify }}" = "true" ]; then
-            ARGS="$ARGS --no-verify"
+          ARGS="--platforms ${{ github.event.inputs.platforms }} --workers ${{ github.event.inputs.workers }}"
+          if [ "${{ github.event.inputs.skip_if_filled }}" = "true" ]; then
+            ARGS="$ARGS --skip-if-filled"
           fi
-          if [ -n "${{ github.event.inputs.skip_if_filled }}" ]; then
-            ARGS="$ARGS --skip-if-filled ${{ github.event.inputs.skip_if_filled }}"
-          fi
-          if [ "${{ github.event.inputs.high_confidence_only }}" = "true" ]; then
-            ARGS="$ARGS --high-confidence-only"
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
           fi
           python main.py $ARGS
