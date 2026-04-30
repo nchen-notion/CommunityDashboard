@@ -35,7 +35,6 @@ jobs:
       - name: Run enricher
         working-directory: enricher
         env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

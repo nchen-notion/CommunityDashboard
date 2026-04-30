@@ -64,6 +64,7 @@ def _parse_page(page: dict) -> dict:
         "location": f"{get_text('City')}, {get_text('Country')}".strip(", "),
         "website": get_url("Website"),
         "linkedin_url": get_text("LinkedIn URL"),
+        "youtube_handle": get_text("Youtube Handle"),
     }
 
 
