@@ -22,7 +22,7 @@ on:
       high_confidence_only:
         description: "Only write handle if confidence is high (true/false)"
         required: false
-        default: "false"
+        default: "true"
 
 jobs:
   enrich:
