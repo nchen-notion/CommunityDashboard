@@ -116,7 +116,7 @@ def update_page(page_id: str, result: dict):
     if result.get("needs_review"):
         properties["Needs Review"] = checkbox_prop(True)
     if result.get("notes"):
-        properties["Notes"] = text_prop(result["notes"])
+        properties["Enricher Notes"] = text_prop(result["notes"])
 
     resp = requests.patch(
         f"https://api.notion.com/v1/pages/{page_id}",
