@@ -95,20 +95,26 @@ def update_page(page_id: str, result: dict):
 
     properties = {}
 
-    # only write platform fields if we actually ran that platform (value present in result)
-    if "youtube_handle" in result:
-        properties["Youtube Handle"] = text_prop(result["youtube_handle"])
-        properties["YouTube Confidence"] = select_prop(result.get("youtube_confidence", ""))
-    if "instagram_handle" in result:
-        properties["Instagram Handle"] = text_prop(result["instagram_handle"])
-        properties["Instagram Confidence"] = select_prop(result.get("instagram_confidence", ""))
-    if result.get("instagram_followers") is not None:
-        properties["Instagram Followers"] = {"number": result["instagram_followers"] or None}
-    if "notion_marketplace_url" in result:
-        properties["Notion Marketplace URL"] = text_prop(result["notion_marketplace_url"])
-        properties["Notion Confidence"] = select_prop(result.get("notion_confidence", ""))
+    # Confidence fields are only present in `result` when enrich_person actually ran
+    # that platform — _parse_page does NOT read them back from Notion. Use them as
+    # the per-platform "did we run this?" indicator so single-platform runs never
+    # touch other platforms' columns.
+    if "youtube_confidence" in result:
+        properties["Youtube Handle"] = text_prop(result.get("youtube_handle", ""))
+        properties["YouTube Confidence"] = select_prop(result["youtube_confidence"])
+    if "instagram_confidence" in result:
+        properties["Instagram Handle"] = text_prop(result.get("instagram_handle", ""))
+        properties["Instagram Confidence"] = select_prop(result["instagram_confidence"])
+        if result.get("instagram_followers") is not None:
+            properties["Instagram Followers"] = {"number": result["instagram_followers"] or None}
+    if "notion_confidence" in result:
+        properties["Notion Marketplace URL"] = text_prop(result.get("notion_marketplace_url", ""))
+        properties["Notion Confidence"] = select_prop(result["notion_confidence"])
 
-    properties["Needs Review"] = checkbox_prop(result.get("needs_review", False))
+    # Only ever raise the Needs Review flag — never clear it from a prior run.
+    # A user manually unchecks it in Notion when they've reviewed.
+    if result.get("needs_review"):
+        properties["Needs Review"] = checkbox_prop(True)
     if result.get("notes"):
         properties["Notes"] = text_prop(result["notes"])
 
