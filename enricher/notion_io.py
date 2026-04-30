@@ -93,17 +93,24 @@ def update_page(page_id: str, result: dict):
     def checkbox_prop(val):
         return {"checkbox": bool(val)}
 
-    properties = {
-        "Youtube Handle": text_prop(result.get("youtube_handle", "")),
-        "YouTube Confidence": select_prop(result.get("youtube_confidence", "")),
-        "Instagram Handle": text_prop(result.get("instagram_handle", "")),
-        "Instagram Confidence": select_prop(result.get("instagram_confidence", "")),
-        "Instagram Followers": {"number": result.get("instagram_followers") or None},
-        "Notion Marketplace URL": text_prop(result.get("notion_marketplace_url", "")),
-        "Notion Confidence": select_prop(result.get("notion_confidence", "")),
-        "Needs Review": checkbox_prop(result.get("needs_review", False)),
-        "Notes": text_prop(result.get("notes", "")),
-    }
+    properties = {}
+
+    # only write platform fields if we actually ran that platform (value present in result)
+    if "youtube_handle" in result:
+        properties["Youtube Handle"] = text_prop(result["youtube_handle"])
+        properties["YouTube Confidence"] = select_prop(result.get("youtube_confidence", ""))
+    if "instagram_handle" in result:
+        properties["Instagram Handle"] = text_prop(result["instagram_handle"])
+        properties["Instagram Confidence"] = select_prop(result.get("instagram_confidence", ""))
+    if result.get("instagram_followers") is not None:
+        properties["Instagram Followers"] = {"number": result["instagram_followers"] or None}
+    if "notion_marketplace_url" in result:
+        properties["Notion Marketplace URL"] = text_prop(result["notion_marketplace_url"])
+        properties["Notion Confidence"] = select_prop(result.get("notion_confidence", ""))
+
+    properties["Needs Review"] = checkbox_prop(result.get("needs_review", False))
+    if result.get("notes"):
+        properties["Notes"] = text_prop(result["notes"])
 
     resp = requests.patch(
         f"https://api.notion.com/v1/pages/{page_id}",
