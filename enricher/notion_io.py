@@ -9,10 +9,15 @@ HEADERS = {
 }
 
 
-def fetch_people(database_id: str) -> list[dict]:
-    """Fetch all rows from a Notion database and return as person dicts with page_id."""
+def fetch_people(database_id: str, skip_if_filled: str = "") -> list[dict]:
+    """Fetch all rows from a Notion database and return as person dicts with page_id.
+
+    skip_if_filled: if set, skip rows that already have a value for that person dict key
+    (e.g. 'youtube_handle' skips rows where Youtube Handle is already populated).
+    """
     people = []
     cursor = None
+    skipped = 0
 
     while True:
         body = {"page_size": 100}
@@ -29,13 +34,19 @@ def fetch_people(database_id: str) -> list[dict]:
 
         for page in data.get("results", []):
             person = _parse_page(page)
-            if person.get("name"):
-                people.append(person)
+            if not person.get("name"):
+                continue
+            if skip_if_filled and person.get(skip_if_filled):
+                skipped += 1
+                continue
+            people.append(person)
 
         if not data.get("has_more"):
             break
         cursor = data.get("next_cursor")
 
+    if skipped:
+        print(f"Skipped {skipped} rows already having {skip_if_filled}.")
     return people
 
 

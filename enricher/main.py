@@ -39,7 +39,7 @@ PLATFORM_CONFIDENCE_COL = {
 }
 
 
-def enrich_person(person: dict, platforms: list[str], do_verify: bool) -> dict:
+def enrich_person(person: dict, platforms: list[str], do_verify: bool, high_confidence_only: bool = False) -> dict:
     row = dict(person)
     all_notes = []
     has_low = False
@@ -70,8 +70,11 @@ def enrich_person(person: dict, platforms: list[str], do_verify: bool) -> dict:
             reasoning = "Unverified (--no-verify mode)"
 
         if best:
-            row[url_col] = best.get(PLATFORM_URL_KEY[platform], "")
             row[conf_col] = confidence
+            if high_confidence_only and confidence != "high":
+                row[url_col] = ""
+            else:
+                row[url_col] = best.get(PLATFORM_URL_KEY[platform], "")
             if platform == "instagram" and best.get("followers"):
                 row["instagram_followers"] = best["followers"]
             if reasoning:
@@ -100,6 +103,8 @@ def main():
     )
     parser.add_argument("--no-verify", action="store_true", help="Skip Claude verification (faster, less accurate)")
     parser.add_argument("--workers", type=int, default=1, help="Number of concurrent workers (default: 1)")
+    parser.add_argument("--skip-if-filled", metavar="FIELD", help="Skip rows where this field is already populated (e.g. youtube_handle)")
+    parser.add_argument("--high-confidence-only", action="store_true", help="Only write handle/URL if confidence is high; leave blank otherwise")
     args = parser.parse_args()
 
     if MISSING:
@@ -114,7 +119,7 @@ def main():
     # --- load people ---
     if args.notion_input:
         print(f"Reading from Notion database {args.notion_input}...")
-        people = notion_io.fetch_people(args.notion_input)
+        people = notion_io.fetch_people(args.notion_input, skip_if_filled=args.skip_if_filled or "")
         print(f"Found {len(people)} people.\n")
     elif args.input:
         try:
@@ -137,7 +142,7 @@ def main():
     def process(i, person):
         name = person.get("name", "?")
         try:
-            row = enrich_person(person, platforms, do_verify=not args.no_verify)
+            row = enrich_person(person, platforms, do_verify=not args.no_verify, high_confidence_only=args.high_confidence_only)
         except Exception as e:
             with print_lock:
                 print(f"[{i+1}/{len(people)}] {name} — ERROR: {e}")
