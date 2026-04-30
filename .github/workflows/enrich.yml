@@ -1,0 +1,48 @@
+name: Social Enricher
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to run (comma-separated: youtube, instagram, notion_mp)"
+        required: true
+        default: "instagram"
+      workers:
+        description: "Concurrent workers"
+        required: true
+        default: "5"
+      no_verify:
+        description: "Skip Claude verification (true/false)"
+        required: false
+        default: "false"
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run enricher
+        working-directory: enricher
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: |
+          ARGS="--notion-input ${{ secrets.NOTION_DATABASE_ID }} --platforms ${{ github.event.inputs.platforms }} --workers ${{ github.event.inputs.workers }}"
+          if [ "${{ github.event.inputs.no_verify }}" = "true" ]; then
+            ARGS="$ARGS --no-verify"
+          fi
+          python main.py $ARGS
