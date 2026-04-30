@@ -39,12 +39,14 @@ PLATFORM_CONFIDENCE_COL = {
 }
 
 # Per-platform accepted confidences when --high-confidence-only is set.
-# Instagram accepts medium too because IG bios rarely surface corroborating
-# signals (no website / no email domain), so most real matches land at medium.
+# Instagram and Notion MP accept medium because their candidate data rarely
+# surfaces corroborating signals (IG bios are personal; Marketplace pages only
+# expose title + description). For Notion MP the query itself already filters
+# strongly: `"name" site:notion.so/marketplace`, so a name match is reliable.
 ACCEPTED_CONFIDENCES = {
     "youtube": {"high"},
     "instagram": {"high", "medium"},
-    "notion_mp": {"high"},
+    "notion_mp": {"high", "medium"},
 }
 
 
