@@ -9,9 +9,9 @@ HEADERS = {
 }
 
 URL_FIELDS = {
-    "youtube": "Youtube",
+    "youtube": "YouTube",
     "instagram": "Instagram",
-    "notion_templates": "Notion Templates",
+    "notion_templates": "Notion templates",
     "twitter": "Twitter",
     "tiktok": "TikTok",
 }
