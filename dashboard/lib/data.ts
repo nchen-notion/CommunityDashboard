@@ -2,9 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { unstable_cache } from "next/cache";
 import {
-  fetchLiveSnapshotAndTopAmbassadors,
-  fetchTopAmbassadors,
+  fetchLiveSnapshot,
   fetchEvents,
+  fetchTopAmbassadors,
   fetchTopCampusLeaders,
   fetchTopGroups,
 } from "./notion";
@@ -58,52 +58,9 @@ export type Snapshot = {
   groups: SegmentSnapshot;
 };
 
-// ---------------------------------------------------------------------------
-// Archive helpers (fast — reads from disk, no Notion API calls)
-// ---------------------------------------------------------------------------
-
-function readArchives(): { month: string; snap: Snapshot }[] {
-  const dir = path.join(process.cwd(), "public", "data", "snapshots");
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => ({
-      month: f.replace(/\.json$/, ""),
-      snap: JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Snapshot,
-    }));
-}
-
-// ---------------------------------------------------------------------------
-// Cached Notion fetches — called at most once per 30 min across all requests
-// ---------------------------------------------------------------------------
-
-// Ambassador top-10: scans only ambassador DB (5 Notion API calls).
-const _cachedTopAmbassadors = unstable_cache(
-  () => fetchTopAmbassadors(),
-  ["top-ambassadors"],
-  { revalidate: 1800 },
-);
-
-// Full snapshot fetch — only called when no JSON archive exists for the month.
-const _cachedAmbData = unstable_cache(
-  () => fetchLiveSnapshotAndTopAmbassadors(),
-  ["amb-data"],
-  { revalidate: 1800 },
-);
-
-// Campus leaders top-10: single sorted Notion query (1 API call).
-const _cachedTopCampusLeaders = unstable_cache(
-  () => fetchTopCampusLeaders(),
-  ["top-campus-leaders"],
-  { revalidate: 1800 },
-);
-
-// Groups top-10: single sorted Notion query (1 API call).
-const _cachedTopGroups = unstable_cache(
-  () => fetchTopGroups(),
-  ["top-groups"],
+const _cachedSnapshot = unstable_cache(
+  () => fetchLiveSnapshot(),
+  ["live-snapshot"],
   { revalidate: 1800 },
 );
 
@@ -113,38 +70,9 @@ const _cachedEvents = unstable_cache(
   { revalidate: 1800 },
 );
 
-// ---------------------------------------------------------------------------
-// Public loaders
-// ---------------------------------------------------------------------------
-
-// Prefers the on-disk JSON archive for the current month (instant, no API
-// calls). Falls back to a live Notion fetch only if no archive exists yet.
 export async function loadSnapshot(): Promise<Snapshot> {
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const archive = readArchives().find((a) => a.month === currentMonth);
-  if (archive) return archive.snap;
-  return (await _cachedAmbData()).snapshot;
+  return _cachedSnapshot();
 }
-
-export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {
-  return _cachedTopAmbassadors();
-}
-
-export async function loadTopCampusLeaders(): Promise<CampusLeaderRow[]> {
-  return _cachedTopCampusLeaders();
-}
-
-export async function loadTopGroups(): Promise<GroupRow[]> {
-  return _cachedTopGroups();
-}
-
-export async function loadEvents(): Promise<LumaEvent[]> {
-  return _cachedEvents();
-}
-
-// ---------------------------------------------------------------------------
-// History helpers (read from disk archives + optional live injection)
-// ---------------------------------------------------------------------------
 
 export type HistoryPoint = {
   month: string;
@@ -158,6 +86,19 @@ export type HistoryPoint = {
 export type PlatformHistoryPoint = {
   month: string;
 } & Record<string, number | string>;
+
+function readArchives(): { month: string; snap: Snapshot }[] {
+  const dir = path.join(process.cwd(), "public", "data", "snapshots");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((f) => ({
+      month: f.replace(/\.json$/, ""),
+      snap: JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Snapshot,
+    }));
+}
 
 type LiveTotals = { snap: Snapshot; eventsTotal: number };
 
@@ -186,6 +127,101 @@ export function loadHistory(live?: LiveTotals): HistoryPoint[] {
   return points;
 }
 
+export type DataSourceRow = {
+  segment: "Ambassadors" | "Campus Leaders" | "Groups" | "Events";
+  label: string;
+  values: Record<string, number>; // month -> count (empty if placeholder)
+  placeholder?: string;
+};
+
+type SourceSpec =
+  | { kind: "rows" }
+  | { kind: "platform"; key: string }
+  | { kind: "placeholder"; text: string }
+  | { kind: "events-live" };
+
+type Canonical = {
+  segment: DataSourceRow["segment"];
+  label: string;
+  source: SourceSpec;
+};
+
+// Canonical row order + display labels match the user's Notion summary table
+const CANONICAL: Canonical[] = [
+  { segment: "Ambassadors", label: "Members", source: { kind: "rows" } },
+  { segment: "Ambassadors", label: "Youtube Followers", source: { kind: "platform", key: "YouTube" } },
+  { segment: "Ambassadors", label: "Instagram Followers", source: { kind: "platform", key: "Instagram" } },
+  { segment: "Ambassadors", label: "Twitter Followers", source: { kind: "platform", key: "Twitter" } },
+  { segment: "Ambassadors", label: "TikTok Followers", source: { kind: "platform", key: "TikTok" } },
+  { segment: "Ambassadors", label: "LinkedIn Followers", source: { kind: "platform", key: "LinkedIn" } },
+  { segment: "Ambassadors", label: "Templates Made", source: { kind: "platform", key: "Notion templates" } },
+
+  { segment: "Campus Leaders", label: "Members", source: { kind: "rows" } },
+  { segment: "Campus Leaders", label: "LinkedIn Followers", source: { kind: "platform", key: "LinkedIn" } },
+  { segment: "Campus Leaders", label: "Instagram Followers", source: { kind: "placeholder", text: "No data" } },
+  { segment: "Campus Leaders", label: "Twitter Followers", source: { kind: "placeholder", text: "No data" } },
+  { segment: "Campus Leaders", label: "TikTok Followers", source: { kind: "placeholder", text: "No data" } },
+  { segment: "Campus Leaders", label: "Youtube Followers", source: { kind: "placeholder", text: "No data" } },
+
+  { segment: "Events", label: "Total RSVPs", source: { kind: "events-live" } },
+
+  { segment: "Groups", label: "Facebook Members", source: { kind: "platform", key: "Facebook" } },
+  { segment: "Groups", label: "Meetup Members", source: { kind: "platform", key: "Meetup" } },
+  { segment: "Groups", label: "Peatix Members", source: { kind: "platform", key: "Peatix" } },
+  { segment: "Groups", label: "Circle Members", source: { kind: "platform", key: "Circle" } },
+  { segment: "Groups", label: "LinkedIn Members", source: { kind: "platform", key: "LinkedIn" } },
+  { segment: "Groups", label: "Twitter Members", source: { kind: "platform", key: "Twitter" } },
+  { segment: "Groups", label: "Reddit Members", source: { kind: "platform", key: "Reddit" } },
+  { segment: "Groups", label: "Discord Members", source: { kind: "platform", key: "Discord" } },
+  { segment: "Groups", label: "Connpass Members", source: { kind: "platform", key: "Connpass" } },
+  { segment: "Groups", label: "Slack Members", source: { kind: "platform", key: "Slack" } },
+  { segment: "Groups", label: "Clubhouse Members", source: { kind: "platform", key: "Clubhouse" } },
+  { segment: "Groups", label: "Telegram Members", source: { kind: "platform", key: "Telegram" } },
+  { segment: "Groups", label: "Instagram Members", source: { kind: "platform", key: "Instagram" } },
+  { segment: "Groups", label: "Website Members", source: { kind: "platform", key: "Website" } },
+];
+
+function pickSegment(snap: Snapshot, segment: DataSourceRow["segment"]): SegmentSnapshot {
+  if (segment === "Ambassadors") return snap.ambassadors;
+  if (segment === "Campus Leaders") return snap.campus_leaders;
+  return snap.groups;
+}
+
+export function loadDataSourceHistory(live?: LiveTotals): {
+  months: string[];
+  rows: DataSourceRow[];
+} {
+  const archives = readArchives();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
+  const allEntries = live && !hasCurrentMonth
+    ? [...archives, { month: currentMonth, snap: live.snap }]
+    : archives;
+  const months = allEntries.map((a) => a.month);
+
+  const rows: DataSourceRow[] = CANONICAL.map((c) => {
+    const row: DataSourceRow = { segment: c.segment, label: c.label, values: {} };
+    if (c.source.kind === "placeholder") {
+      row.placeholder = c.source.text;
+      return row;
+    }
+    if (c.source.kind === "events-live") {
+      if (live) row.values[currentMonth] = live.eventsTotal;
+      else row.placeholder = "Live on /events";
+      return row;
+    }
+    for (const { month, snap } of allEntries) {
+      const seg = pickSegment(snap, c.segment);
+      const v =
+        c.source.kind === "rows" ? seg.rows : seg.platforms[c.source.key] ?? 0;
+      if (v) row.values[month] = v;
+    }
+    return row;
+  });
+
+  return { months, rows };
+}
+
 export function loadPlatformHistory(live?: LiveTotals): {
   data: PlatformHistoryPoint[];
   platforms: string[];
@@ -193,10 +229,9 @@ export function loadPlatformHistory(live?: LiveTotals): {
   const archives = readArchives();
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
-  const allEntries =
-    live && !hasCurrentMonth
-      ? [...archives, { month: currentMonth, snap: live.snap }]
-      : archives;
+  const allEntries = live && !hasCurrentMonth
+    ? [...archives, { month: currentMonth, snap: live.snap }]
+    : archives;
 
   const platformSet = new Set<string>();
   const data: PlatformHistoryPoint[] = allEntries.map(({ month, snap }) => {
@@ -219,6 +254,40 @@ export function loadPlatformHistory(live?: LiveTotals): {
     (a, b) => ((latest[b] as number) ?? 0) - ((latest[a] as number) ?? 0),
   );
   return { data, platforms };
+}
+
+export async function loadEvents(): Promise<LumaEvent[]> {
+  return _cachedEvents();
+}
+
+const _cachedTopAmbassadors = unstable_cache(
+  () => fetchTopAmbassadors(),
+  ["top-ambassadors"],
+  { revalidate: 1800 },
+);
+
+const _cachedTopCampusLeaders = unstable_cache(
+  () => fetchTopCampusLeaders(),
+  ["top-campus-leaders"],
+  { revalidate: 1800 },
+);
+
+const _cachedTopGroups = unstable_cache(
+  () => fetchTopGroups(),
+  ["top-groups"],
+  { revalidate: 1800 },
+);
+
+export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {
+  return _cachedTopAmbassadors();
+}
+
+export async function loadTopCampusLeaders(): Promise<CampusLeaderRow[]> {
+  return _cachedTopCampusLeaders();
+}
+
+export async function loadTopGroups(): Promise<GroupRow[]> {
+  return _cachedTopGroups();
 }
 
 export { formatNumber } from "./format";

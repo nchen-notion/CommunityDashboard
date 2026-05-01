@@ -1,4 +1,3 @@
-
 import { StatCard } from "@/components/StatCard";
 import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";
@@ -152,3 +151,4 @@ export default async function Home() {
     </div>
   );
 }
+

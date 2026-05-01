@@ -1,4 +1,3 @@
-
 import { loadEvents } from "@/lib/data";
 import { formatNumber, formatDate } from "@/lib/format";
 import { StatCard } from "@/components/StatCard";
