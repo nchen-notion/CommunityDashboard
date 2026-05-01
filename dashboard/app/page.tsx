@@ -2,12 +2,14 @@ import { StatCard } from "@/components/StatCard";
 import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";
 import { TrendChart } from "@/components/TrendChart";
-import { loadSnapshot, loadHistory } from "@/lib/data";
+import { PlatformTrendChart } from "@/components/PlatformTrendChart";
+import { loadSnapshot, loadHistory, loadPlatformHistory } from "@/lib/data";
 import { SEGMENT_COLORS } from "@/lib/theme";
 
 export default function Home() {
   const snap = loadSnapshot();
   const history = loadHistory();
+  const platformHistory = loadPlatformHistory();
   const segments = [
     { name: "Ambassadors", value: snap.ambassadors.total },
     { name: "Campus Leaders", value: snap.campus_leaders.total },
@@ -71,6 +73,11 @@ export default function Home() {
       </div>
 
       <section className="space-y-4">
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">Reach by segment</h2>
+        <SegmentPieChart data={segments} />
+      </section>
+
+      <section className="space-y-4">
         <h2 className="font-serif text-2xl font-semibold tracking-tight">
           Reach over time
           {history.length < 2 ? (
@@ -83,11 +90,6 @@ export default function Home() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-serif text-2xl font-semibold tracking-tight">Reach by segment</h2>
-        <SegmentPieChart data={segments} />
-      </section>
-
-      <section className="space-y-4">
         <h2 className="font-serif text-2xl font-semibold tracking-tight">
           Reach by platform <span className="text-muted">— all segments combined</span>
         </h2>
@@ -96,6 +98,18 @@ export default function Home() {
           keys={["Ambassadors", "Campus Leaders", "Groups"]}
           heightClass="h-[28rem]"
         />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">
+          Reach by platform over time
+          {platformHistory.data.length < 2 ? (
+            <span className="ml-3 align-middle text-sm font-normal text-muted">
+              — first snapshot. Trend builds as monthly snapshots accumulate.
+            </span>
+          ) : null}
+        </h2>
+        <PlatformTrendChart data={platformHistory.data} platforms={platformHistory.platforms} />
       </section>
 
       <section className="space-y-4">

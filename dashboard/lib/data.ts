@@ -39,24 +39,55 @@ export type HistoryPoint = {
   total: number;
 };
 
-export function loadHistory(): HistoryPoint[] {
+export type PlatformHistoryPoint = {
+  month: string;
+} & Record<string, number | string>;
+
+function readArchives(): { month: string; snap: Snapshot }[] {
   const dir = path.join(process.cwd(), "public", "data", "snapshots");
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
     .sort()
-    .map((f) => {
-      const snap: Snapshot = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
-      const month = f.replace(/\.json$/, "");
-      return {
-        month,
-        ambassadors: snap.ambassadors.total,
-        campus_leaders: snap.campus_leaders.total,
-        groups: snap.groups.total,
-        total: snap.ambassadors.total + snap.campus_leaders.total + snap.groups.total,
-      };
-    });
+    .map((f) => ({
+      month: f.replace(/\.json$/, ""),
+      snap: JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Snapshot,
+    }));
+}
+
+export function loadHistory(): HistoryPoint[] {
+  return readArchives().map(({ month, snap }) => ({
+    month,
+    ambassadors: snap.ambassadors.total,
+    campus_leaders: snap.campus_leaders.total,
+    groups: snap.groups.total,
+    total: snap.ambassadors.total + snap.campus_leaders.total + snap.groups.total,
+  }));
+}
+
+export function loadPlatformHistory(): {
+  data: PlatformHistoryPoint[];
+  platforms: string[];
+} {
+  const archives = readArchives();
+  const platformSet = new Set<string>();
+  const data: PlatformHistoryPoint[] = archives.map(({ month, snap }) => {
+    const combined: Record<string, number> = {};
+    for (const seg of [snap.ambassadors, snap.campus_leaders, snap.groups]) {
+      for (const [k, v] of Object.entries(seg.platforms)) {
+        combined[k] = (combined[k] ?? 0) + v;
+        platformSet.add(k);
+      }
+    }
+    return { month, ...combined };
+  });
+  // Order platforms by their latest-month total, descending — keeps the legend useful
+  const latest = data[data.length - 1] ?? {};
+  const platforms = Array.from(platformSet).sort(
+    (a, b) => ((latest[b] as number) ?? 0) - ((latest[a] as number) ?? 0),
+  );
+  return { data, platforms };
 }
 
 export { formatNumber } from "./format";
