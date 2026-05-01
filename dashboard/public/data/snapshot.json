@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-05-01T05:08:54.091669+00:00",
+  "ambassadors": {
+    "rows": 407,
+    "total": 25482350,
+    "platforms": {
+      "YouTube": 20481434,
+      "Instagram": 1030718,
+      "TikTok": 2185594,
+      "Twitter": 776492,
+      "Notion templates": 13852,
+      "LinkedIn": 994260
+    }
+  },
+  "campus_leaders": {
+    "rows": 887,
+    "total": 1113978,
+    "platforms": {
+      "LinkedIn": 1113978
+    }
+  },
+  "groups": {
+    "rows": 155,
+    "total": 1894157,
+    "platforms": {
+      "Facebook": 1227947,
+      "Meetup": 4018,
+      "Peatix": 426,
+      "Circle": 420,
+      "LinkedIn": 9465,
+      "Twitter": 62938,
+      "Reddit": 498552,
+      "Discord": 54105,
+      "Connpass": 186,
+      "Slack": 6378,
+      "Clubhouse": 1475,
+      "Telegram": 22209,
+      "Instagram": 4783,
+      "Website": 1255
+    }
+  }
+}

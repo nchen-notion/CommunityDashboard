@@ -1,4 +1,4 @@
-name: Follower Counts
+name: Group Member Counts
 
 on:
   schedule:
@@ -6,15 +6,15 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: "Comma-separated platforms (youtube, instagram, tiktok, twitter, notion_templates)"
+        description: "Comma-separated platforms (blank = all). Options: Facebook, Reddit, Discord, Telegram, Meetup, Connpass, Peatix, Clubhouse, Twitter, Instagram"
         required: false
-        default: "youtube,instagram,tiktok,twitter,notion_templates"
+        default: ""
       workers:
         description: "Concurrent workers"
         required: true
         default: "4"
       skip_if_filled:
-        description: "Skip a platform on rows where its count is already populated (true/false)"
+        description: "Skip rows whose Followers field is already populated (true/false)"
         required: false
         default: "false"
       limit:
@@ -38,14 +38,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run scraper
-        working-directory: enricher
+      - name: Run groups scraper
+        working-directory: groups
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_GROUPS_DATABASE_ID: ${{ secrets.NOTION_GROUPS_DATABASE_ID }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
         run: |
-          ARGS="--platforms ${{ github.event.inputs.platforms }} --workers ${{ github.event.inputs.workers }}"
+          ARGS="--workers ${{ github.event.inputs.workers }}"
+          if [ -n "${{ github.event.inputs.platforms }}" ]; then
+            ARGS="$ARGS --platforms ${{ github.event.inputs.platforms }}"
+          fi
           if [ "${{ github.event.inputs.skip_if_filled }}" = "true" ]; then
             ARGS="$ARGS --skip-if-filled"
           fi

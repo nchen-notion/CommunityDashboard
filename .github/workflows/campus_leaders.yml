@@ -1,0 +1,68 @@
+name: LinkedIn Follower Counts
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'  # 1st of every month, 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: "Concurrent workers"
+        required: true
+        default: "8"
+      skip_if_filled:
+        description: "Skip rows whose LinkedIn Followers field is already populated (true/false)"
+        required: false
+        default: "true"
+      limit:
+        description: "Process only the first N rows (blank for all)"
+        required: false
+        default: ""
+
+jobs:
+  fetch-followers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run LinkedIn followers (Campus Leaders DB)
+        working-directory: campus_leaders
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_CAMPUS_LEADERS_DATABASE_ID: ${{ secrets.NOTION_CAMPUS_LEADERS_DATABASE_ID }}
+        run: |
+          WORKERS="${{ github.event.inputs.workers }}"
+          ARGS="--workers ${WORKERS:-8} --url-field 'LinkedIn profile'"
+          if [ "${{ github.event.inputs.skip_if_filled }}" != "false" ]; then
+            ARGS="$ARGS --skip-if-filled"
+          fi
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
+          fi
+          eval python linkedin_followers.py $ARGS
+
+      - name: Run LinkedIn followers (Ambassador DB)
+        working-directory: campus_leaders
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: |
+          WORKERS="${{ github.event.inputs.workers }}"
+          ARGS="--db 352acd526333808490d3cfd7b48505c4 --url-field LinkedIn --workers ${WORKERS:-8}"
+          if [ "${{ github.event.inputs.skip_if_filled }}" != "false" ]; then
+            ARGS="$ARGS --skip-if-filled"
+          fi
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
+          fi
+          python linkedin_followers.py $ARGS

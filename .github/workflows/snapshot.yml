@@ -1,0 +1,44 @@
+name: Dashboard Snapshot
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'  # 1st of every month, 06:00 UTC (after the scrapers finish)
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate snapshot
+        working-directory: dashboard
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_CAMPUS_LEADERS_DATABASE_ID: ${{ secrets.NOTION_CAMPUS_LEADERS_DATABASE_ID }}
+          NOTION_GROUPS_DATABASE_ID: ${{ secrets.NOTION_GROUPS_DATABASE_ID }}
+        run: python3 scripts/generate_snapshot.py
+
+      - name: Commit snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet dashboard/public/data/snapshot.json; then
+            echo "No snapshot changes."
+          else
+            git add dashboard/public/data/snapshot.json
+            git commit -m "Refresh dashboard snapshot"
+            git push
+          fi
