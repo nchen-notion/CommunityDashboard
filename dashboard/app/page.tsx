@@ -1,3 +1,5 @@
+export const revalidate = 1800;
+
 import { StatCard } from "@/components/StatCard";
 import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";

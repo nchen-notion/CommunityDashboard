@@ -1,3 +1,5 @@
+export const revalidate = 1800;
+
 import { SegmentView } from "@/components/SegmentView";
 import { TopGroupsTable } from "@/components/TopGroupsTable";
 import { loadSnapshot, loadTopGroups } from "@/lib/data";
