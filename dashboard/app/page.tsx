@@ -1,4 +1,3 @@
-export const revalidate = 1800;
 
 import { StatCard } from "@/components/StatCard";
 import { PlatformBarChart } from "@/components/PlatformBarChart";
@@ -153,4 +152,3 @@ export default async function Home() {
     </div>
   );
 }
-

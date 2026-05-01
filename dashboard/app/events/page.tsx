@@ -1,4 +1,3 @@
-export const revalidate = 1800;
 
 import { loadEvents } from "@/lib/data";
 import { formatNumber, formatDate } from "@/lib/format";
