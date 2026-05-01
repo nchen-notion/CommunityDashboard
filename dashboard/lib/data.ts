@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
 import { fetchLiveSnapshot, fetchEvents } from "./notion";
 
 export type PlatformTotals = Record<string, number>;
@@ -26,9 +27,20 @@ export type Snapshot = {
   groups: SegmentSnapshot;
 };
 
-// Live data always comes from Notion directly — no JSON file needed.
+const _cachedSnapshot = unstable_cache(
+  () => fetchLiveSnapshot(),
+  ["live-snapshot"],
+  { revalidate: 1800 },
+);
+
+const _cachedEvents = unstable_cache(
+  () => fetchEvents(),
+  ["luma-events"],
+  { revalidate: 1800 },
+);
+
 export async function loadSnapshot(): Promise<Snapshot> {
-  return fetchLiveSnapshot();
+  return _cachedSnapshot();
 }
 
 export type HistoryPoint = {
@@ -214,7 +226,7 @@ export function loadPlatformHistory(live?: LiveTotals): {
 }
 
 export async function loadEvents(): Promise<LumaEvent[]> {
-  return fetchEvents();
+  return _cachedEvents();
 }
 
 export { formatNumber } from "./format";

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime, timezone
 import requests
 from config import LUMA_API_KEY
 
@@ -16,10 +17,19 @@ def list_calendar_events(calendar_id: str) -> list[dict]:
         resp = requests.get(f"{_BASE}/calendar/list-events", headers=_HEADERS, params=params)
         resp.raise_for_status()
         data = resp.json()
+        now = datetime.now(timezone.utc)
         for entry in data.get("entries", []):
             event = entry.get("event", {})
-            if event.get("api_id"):
-                events.append(event)
+            if not event.get("api_id"):
+                continue
+            start_at = event.get("start_at", "")
+            if start_at:
+                try:
+                    if datetime.fromisoformat(start_at.replace("Z", "+00:00")) > now:
+                        continue
+                except ValueError:
+                    pass
+            events.append(event)
         if not data.get("has_more"):
             break
         cursor = data.get("next_cursor")

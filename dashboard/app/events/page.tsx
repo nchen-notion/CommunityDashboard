@@ -33,14 +33,12 @@ export default async function EventsPage() {
                 <th className="px-4 py-3 font-semibold text-muted">Event</th>
                 <th className="px-4 py-3 font-semibold text-muted">Date</th>
                 <th className="px-4 py-3 text-right font-semibold text-muted">RSVPs</th>
-                <th className="px-4 py-3 font-semibold text-muted">Host</th>
-                <th className="px-4 py-3 font-semibold text-muted">Location</th>
               </tr>
             </thead>
             <tbody>
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={3} className="px-4 py-8 text-center text-muted">
                     No events found.
                   </td>
                 </tr>
@@ -68,8 +66,6 @@ export default async function EventsPage() {
                     <td className="px-4 py-3 text-right font-serif tabular-nums">
                       {formatNumber(event.rsvpCount)}
                     </td>
-                    <td className="px-4 py-3 text-muted">{event.host || "—"}</td>
-                    <td className="px-4 py-3 text-muted">{event.location || "Virtual"}</td>
                   </tr>
                 ))
               )}

@@ -121,7 +121,7 @@ export async function fetchEvents(): Promise<LumaEvent[]> {
       location: richText(page, "Location"),
       url: urlField(page, "Link to Event"),
     }))
-    .filter((e) => e.name)
+    .filter((e) => e.name && (!e.date || e.date <= new Date().toISOString().slice(0, 10)))
     .sort((a, b) => {
       if (!a.date && !b.date) return 0;
       if (!a.date) return 1;
