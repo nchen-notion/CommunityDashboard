@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
 import {
   fetchLiveSnapshotAndTopAmbassadors,
   fetchEvents,
@@ -56,34 +57,50 @@ export type Snapshot = {
   groups: SegmentSnapshot;
 };
 
-// Fetches snapshot + top ambassadors in one Notion pass (shared queryAll).
-let _liveDataCache: { snapshot: Snapshot; topAmbassadors: AmbassadorRow[] } | null = null;
+// Single cached call that returns both snapshot and top ambassadors,
+// so the ambassador DB is only queried once per revalidation window.
+const _cachedLiveData = unstable_cache(
+  () => fetchLiveSnapshotAndTopAmbassadors(),
+  ["live-data"],
+  { revalidate: 1800 },
+);
 
-async function getLiveData() {
-  if (!_liveDataCache) {
-    _liveDataCache = await fetchLiveSnapshotAndTopAmbassadors();
-  }
-  return _liveDataCache;
-}
+const _cachedEvents = unstable_cache(
+  () => fetchEvents(),
+  ["luma-events"],
+  { revalidate: 1800 },
+);
+
+const _cachedTopCampusLeaders = unstable_cache(
+  () => fetchTopCampusLeaders(),
+  ["top-campus-leaders"],
+  { revalidate: 1800 },
+);
+
+const _cachedTopGroups = unstable_cache(
+  () => fetchTopGroups(),
+  ["top-groups"],
+  { revalidate: 1800 },
+);
 
 export async function loadSnapshot(): Promise<Snapshot> {
-  return (await getLiveData()).snapshot;
+  return (await _cachedLiveData()).snapshot;
 }
 
 export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {
-  return (await getLiveData()).topAmbassadors;
+  return (await _cachedLiveData()).topAmbassadors;
 }
 
 export async function loadTopCampusLeaders(): Promise<CampusLeaderRow[]> {
-  return fetchTopCampusLeaders();
+  return _cachedTopCampusLeaders();
 }
 
 export async function loadTopGroups(): Promise<GroupRow[]> {
-  return fetchTopGroups();
+  return _cachedTopGroups();
 }
 
 export async function loadEvents(): Promise<LumaEvent[]> {
-  return fetchEvents();
+  return _cachedEvents();
 }
 
 export type HistoryPoint = {
