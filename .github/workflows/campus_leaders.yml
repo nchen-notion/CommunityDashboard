@@ -12,7 +12,7 @@ on:
       skip_if_filled:
         description: "Skip rows whose LinkedIn Followers field is already populated (true/false)"
         required: false
-        default: "true"
+        default: "false"
       limit:
         description: "Process only the first N rows (blank for all)"
         required: false
@@ -43,7 +43,7 @@ jobs:
         run: |
           WORKERS="${{ github.event.inputs.workers }}"
           ARGS="--workers ${WORKERS:-8} --url-field 'LinkedIn profile'"
-          if [ "${{ github.event.inputs.skip_if_filled }}" != "false" ]; then
+          if [ "${{ github.event.inputs.skip_if_filled }}" = "true" ]; then
             ARGS="$ARGS --skip-if-filled"
           fi
           if [ -n "${{ github.event.inputs.limit }}" ]; then
@@ -59,7 +59,7 @@ jobs:
         run: |
           WORKERS="${{ github.event.inputs.workers }}"
           ARGS="--db 352acd526333808490d3cfd7b48505c4 --url-field LinkedIn --workers ${WORKERS:-8}"
-          if [ "${{ github.event.inputs.skip_if_filled }}" != "false" ]; then
+          if [ "${{ github.event.inputs.skip_if_filled }}" = "true" ]; then
             ARGS="$ARGS --skip-if-filled"
           fi
           if [ -n "${{ github.event.inputs.limit }}" ]; then

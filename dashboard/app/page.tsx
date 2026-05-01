@@ -1,11 +1,13 @@
 import { StatCard } from "@/components/StatCard";
 import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";
-import { loadSnapshot } from "@/lib/data";
+import { TrendChart } from "@/components/TrendChart";
+import { loadSnapshot, loadHistory } from "@/lib/data";
 import { SEGMENT_COLORS } from "@/lib/theme";
 
 export default function Home() {
   const snap = loadSnapshot();
+  const history = loadHistory();
   const segments = [
     { name: "Ambassadors", value: snap.ambassadors.total },
     { name: "Campus Leaders", value: snap.campus_leaders.total },
@@ -67,6 +69,18 @@ export default function Home() {
           accent={SEGMENT_COLORS.Groups}
         />
       </div>
+
+      <section className="space-y-4">
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">
+          Reach over time
+          {history.length < 2 ? (
+            <span className="ml-3 align-middle text-sm font-normal text-muted">
+              — first snapshot. Trend builds as monthly snapshots accumulate.
+            </span>
+          ) : null}
+        </h2>
+        <TrendChart data={history} />
+      </section>
 
       <section className="space-y-4">
         <h2 className="font-serif text-2xl font-semibold tracking-tight">Reach by segment</h2>

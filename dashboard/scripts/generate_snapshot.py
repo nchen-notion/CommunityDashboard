@@ -128,10 +128,20 @@ def main():
         "groups": groups_snapshot(),
     }
 
-    out = Path(__file__).resolve().parent.parent / "public" / "data" / "snapshot.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(snap, indent=2))
-    print(f"Wrote {out}")
+    data_dir = Path(__file__).resolve().parent.parent / "public" / "data"
+    archive_dir = data_dir / "snapshots"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = json.dumps(snap, indent=2)
+    latest = data_dir / "snapshot.json"
+    latest.write_text(payload)
+
+    # Dated archive — keyed by year-month so re-runs in the same month overwrite
+    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    archived = archive_dir / f"{month_key}.json"
+    archived.write_text(payload)
+    print(f"Wrote {latest}")
+    print(f"Wrote {archived}")
     print(f"  Ambassadors:    {snap['ambassadors']['total']:>12,} across {snap['ambassadors']['rows']} rows")
     print(f"  Campus Leaders: {snap['campus_leaders']['total']:>12,} across {snap['campus_leaders']['rows']} rows")
     print(f"  Groups:         {snap['groups']['total']:>12,} across {snap['groups']['rows']} rows")

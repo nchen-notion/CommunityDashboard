@@ -31,4 +31,32 @@ export function loadSnapshot(): Snapshot {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
+export type HistoryPoint = {
+  month: string;
+  ambassadors: number;
+  campus_leaders: number;
+  groups: number;
+  total: number;
+};
+
+export function loadHistory(): HistoryPoint[] {
+  const dir = path.join(process.cwd(), "public", "data", "snapshots");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((f) => {
+      const snap: Snapshot = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+      const month = f.replace(/\.json$/, "");
+      return {
+        month,
+        ambassadors: snap.ambassadors.total,
+        campus_leaders: snap.campus_leaders.total,
+        groups: snap.groups.total,
+        total: snap.ambassadors.total + snap.campus_leaders.total + snap.groups.total,
+      };
+    });
+}
+
 export { formatNumber } from "./format";
