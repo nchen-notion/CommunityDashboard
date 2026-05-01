@@ -3,13 +3,20 @@ import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";
 import { TrendChart } from "@/components/TrendChart";
 import { PlatformTrendChart } from "@/components/PlatformTrendChart";
-import { loadSnapshot, loadHistory, loadPlatformHistory } from "@/lib/data";
+import { DataSourceTable } from "@/components/DataSourceTable";
+import {
+  loadSnapshot,
+  loadHistory,
+  loadPlatformHistory,
+  loadDataSourceHistory,
+} from "@/lib/data";
 import { SEGMENT_COLORS } from "@/lib/theme";
 
 export default function Home() {
   const snap = loadSnapshot();
   const history = loadHistory();
   const platformHistory = loadPlatformHistory();
+  const dataSources = loadDataSourceHistory();
   const segments = [
     { name: "Ambassadors", value: snap.ambassadors.total },
     { name: "Campus Leaders", value: snap.campus_leaders.total },
@@ -114,45 +121,12 @@ export default function Home() {
 
       <section className="space-y-4">
         <h2 className="font-serif text-2xl font-semibold tracking-tight">Data sources</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SourceCard
-            title="Ambassador Database"
-            rows={snap.ambassadors.rows}
-            description="YouTube, Instagram, TikTok, Twitter, Notion templates, and LinkedIn follower counts pulled from Apify actors."
-          />
-          <SourceCard
-            title="Campus Leaders Database"
-            rows={snap.campus_leaders.rows}
-            description="LinkedIn follower counts via apimaestro/linkedin-profile-detail."
-          />
-          <SourceCard
-            title="Membership Database"
-            rows={snap.groups.rows}
-            description="Group sizes across Facebook, Reddit, Discord, Telegram, Meetup, Connpass, Peatix, Clubhouse, Twitter, Instagram via Apify + Firecrawl."
-          />
-        </div>
-        <p className="pt-2 text-xs text-muted">
-          Snapshots refresh on the 1st of every month at 06:00 UTC.
+        <p className="text-sm text-muted">
+          Each row is one (segment, platform) reading. A new column lands every 1st of the month at 06:00 UTC.
         </p>
+        <DataSourceTable months={dataSources.months} rows={dataSources.rows} />
       </section>
     </div>
   );
 }
 
-function SourceCard({
-  title,
-  rows,
-  description,
-}: {
-  title: string;
-  rows: number;
-  description: string;
-}) {
-  return (
-    <div className="rounded-lg border border-rule bg-paper p-5">
-      <div className="font-serif text-base font-semibold text-ink">{title}</div>
-      <div className="mt-1 text-xs text-muted">{rows.toLocaleString()} rows</div>
-      <p className="mt-3 text-sm leading-relaxed text-ink/80">{description}</p>
-    </div>
-  );
-}
