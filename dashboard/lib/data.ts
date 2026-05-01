@@ -57,11 +57,45 @@ export type Snapshot = {
   groups: SegmentSnapshot;
 };
 
-// Single cached call that returns both snapshot and top ambassadors,
-// so the ambassador DB is only queried once per revalidation window.
-const _cachedLiveData = unstable_cache(
+// ---------------------------------------------------------------------------
+// Archive helpers (fast — reads from disk, no Notion API calls)
+// ---------------------------------------------------------------------------
+
+function readArchives(): { month: string; snap: Snapshot }[] {
+  const dir = path.join(process.cwd(), "public", "data", "snapshots");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((f) => ({
+      month: f.replace(/\.json$/, ""),
+      snap: JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Snapshot,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// Cached Notion fetches — called at most once per 30 min across all requests
+// ---------------------------------------------------------------------------
+
+// Ambassador DB: one scan shared between snapshot fallback + top-10 list.
+const _cachedAmbData = unstable_cache(
   () => fetchLiveSnapshotAndTopAmbassadors(),
-  ["live-data"],
+  ["amb-data"],
+  { revalidate: 1800 },
+);
+
+// Campus leaders top-10: single sorted Notion query (1 API call).
+const _cachedTopCampusLeaders = unstable_cache(
+  () => fetchTopCampusLeaders(),
+  ["top-campus-leaders"],
+  { revalidate: 1800 },
+);
+
+// Groups top-10: single sorted Notion query (1 API call).
+const _cachedTopGroups = unstable_cache(
+  () => fetchTopGroups(),
+  ["top-groups"],
   { revalidate: 1800 },
 );
 
@@ -71,24 +105,22 @@ const _cachedEvents = unstable_cache(
   { revalidate: 1800 },
 );
 
-const _cachedTopCampusLeaders = unstable_cache(
-  () => fetchTopCampusLeaders(),
-  ["top-campus-leaders"],
-  { revalidate: 1800 },
-);
+// ---------------------------------------------------------------------------
+// Public loaders
+// ---------------------------------------------------------------------------
 
-const _cachedTopGroups = unstable_cache(
-  () => fetchTopGroups(),
-  ["top-groups"],
-  { revalidate: 1800 },
-);
-
+// Prefers the on-disk JSON archive for the current month (instant, no API
+// calls). Falls back to a live Notion fetch only if no archive exists yet.
 export async function loadSnapshot(): Promise<Snapshot> {
-  return (await _cachedLiveData()).snapshot;
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const archive = readArchives().find((a) => a.month === currentMonth);
+  if (archive) return archive.snap;
+  return (await _cachedAmbData()).snapshot;
 }
 
+// Ambassador top-10 always comes from live Notion (computed sort by total).
 export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {
-  return (await _cachedLiveData()).topAmbassadors;
+  return (await _cachedAmbData()).topAmbassadors;
 }
 
 export async function loadTopCampusLeaders(): Promise<CampusLeaderRow[]> {
@@ -103,6 +135,10 @@ export async function loadEvents(): Promise<LumaEvent[]> {
   return _cachedEvents();
 }
 
+// ---------------------------------------------------------------------------
+// History helpers (read from disk archives + optional live injection)
+// ---------------------------------------------------------------------------
+
 export type HistoryPoint = {
   month: string;
   ambassadors: number;
@@ -115,19 +151,6 @@ export type HistoryPoint = {
 export type PlatformHistoryPoint = {
   month: string;
 } & Record<string, number | string>;
-
-function readArchives(): { month: string; snap: Snapshot }[] {
-  const dir = path.join(process.cwd(), "public", "data", "snapshots");
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => ({
-      month: f.replace(/\.json$/, ""),
-      snap: JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Snapshot,
-    }));
-}
 
 type LiveTotals = { snap: Snapshot; eventsTotal: number };
 
