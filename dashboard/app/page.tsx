@@ -3,6 +3,7 @@ import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";
 import { TrendChart } from "@/components/TrendChart";
 import { PlatformTrendChart } from "@/components/PlatformTrendChart";
+import { AllDataTable } from "@/components/AllDataTable";
 import {
   loadSnapshot,
   loadHistory,
@@ -130,6 +131,11 @@ export default async function Home() {
           ) : null}
         </h2>
         <PlatformTrendChart data={platformHistory.data} platforms={platformHistory.platforms} />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">All data</h2>
+        <AllDataTable snap={snap} eventsTotal={eventsTotal} eventCount={events.length} />
       </section>
 
       <p className="text-sm text-muted">
