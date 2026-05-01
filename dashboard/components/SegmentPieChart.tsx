@@ -2,7 +2,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { formatNumber } from "@/lib/format";
 
-const COLORS = ["#0b6e99", "#0f7b6c", "#d9730d"];
+const COLORS = ["#0b6e99", "#0f7b6c", "#d9730d", "#6940a5"];
 
 export function SegmentPieChart({
   data,

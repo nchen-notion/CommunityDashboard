@@ -41,4 +41,5 @@ export const PLATFORM_COLORS: Record<string, string> = {
   Circle: "#6940a5",
   Website: "#64473a",
   "Notion templates": "#191919",
+  "Luma Events": "#6940a5",
 };

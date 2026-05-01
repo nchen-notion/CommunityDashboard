@@ -36,6 +36,7 @@ export type HistoryPoint = {
   ambassadors: number;
   campus_leaders: number;
   groups: number;
+  events: number;
   total: number;
 };
 
@@ -56,14 +57,31 @@ function readArchives(): { month: string; snap: Snapshot }[] {
     }));
 }
 
-export function loadHistory(): HistoryPoint[] {
-  return readArchives().map(({ month, snap }) => ({
+type LiveTotals = { snap: Snapshot; eventsTotal: number };
+
+export function loadHistory(live?: LiveTotals): HistoryPoint[] {
+  const archives = readArchives();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const points: HistoryPoint[] = archives.map(({ month, snap }) => ({
     month,
     ambassadors: snap.ambassadors.total,
     campus_leaders: snap.campus_leaders.total,
     groups: snap.groups.total,
+    events: 0,
     total: snap.ambassadors.total + snap.campus_leaders.total + snap.groups.total,
   }));
+  if (live && !archives.some((a) => a.month === currentMonth)) {
+    const { snap, eventsTotal } = live;
+    points.push({
+      month: currentMonth,
+      ambassadors: snap.ambassadors.total,
+      campus_leaders: snap.campus_leaders.total,
+      groups: snap.groups.total,
+      events: eventsTotal,
+      total: snap.ambassadors.total + snap.campus_leaders.total + snap.groups.total + eventsTotal,
+    });
+  }
+  return points;
 }
 
 export type DataSourceRow = {
@@ -126,15 +144,17 @@ function pickSegment(snap: Snapshot, segment: DataSourceRow["segment"]): Segment
   return snap.groups;
 }
 
-export function loadDataSourceHistory(eventsTotal?: number): {
+export function loadDataSourceHistory(live?: LiveTotals): {
   months: string[];
   rows: DataSourceRow[];
 } {
   const archives = readArchives();
-  const archiveMonths = archives.map((a) => a.month);
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const addCurrentMonth = eventsTotal !== undefined && !archiveMonths.includes(currentMonth);
-  const months = addCurrentMonth ? [...archiveMonths, currentMonth] : archiveMonths;
+  const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
+  const allEntries = live && !hasCurrentMonth
+    ? [...archives, { month: currentMonth, snap: live.snap }]
+    : archives;
+  const months = allEntries.map((a) => a.month);
 
   const rows: DataSourceRow[] = CANONICAL.map((c) => {
     const row: DataSourceRow = { segment: c.segment, label: c.label, values: {} };
@@ -143,11 +163,11 @@ export function loadDataSourceHistory(eventsTotal?: number): {
       return row;
     }
     if (c.source.kind === "events-live") {
-      if (eventsTotal !== undefined) row.values[currentMonth] = eventsTotal;
+      if (live) row.values[currentMonth] = live.eventsTotal;
       else row.placeholder = "Live on /events";
       return row;
     }
-    for (const { month, snap } of archives) {
+    for (const { month, snap } of allEntries) {
       const seg = pickSegment(snap, c.segment);
       const v =
         c.source.kind === "rows" ? seg.rows : seg.platforms[c.source.key] ?? 0;
@@ -159,13 +179,19 @@ export function loadDataSourceHistory(eventsTotal?: number): {
   return { months, rows };
 }
 
-export function loadPlatformHistory(): {
+export function loadPlatformHistory(live?: LiveTotals): {
   data: PlatformHistoryPoint[];
   platforms: string[];
 } {
   const archives = readArchives();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
+  const allEntries = live && !hasCurrentMonth
+    ? [...archives, { month: currentMonth, snap: live.snap }]
+    : archives;
+
   const platformSet = new Set<string>();
-  const data: PlatformHistoryPoint[] = archives.map(({ month, snap }) => {
+  const data: PlatformHistoryPoint[] = allEntries.map(({ month, snap }) => {
     const combined: Record<string, number> = {};
     for (const seg of [snap.ambassadors, snap.campus_leaders, snap.groups]) {
       for (const [k, v] of Object.entries(seg.platforms)) {
@@ -173,9 +199,13 @@ export function loadPlatformHistory(): {
         platformSet.add(k);
       }
     }
+    if (live && !hasCurrentMonth && month === currentMonth) {
+      combined["Luma Events"] = live.eventsTotal;
+      platformSet.add("Luma Events");
+    }
     return { month, ...combined };
   });
-  // Order platforms by their latest-month total, descending — keeps the legend useful
+
   const latest = data[data.length - 1] ?? {};
   const platforms = Array.from(platformSet).sort(
     (a, b) => ((latest[b] as number) ?? 0) - ((latest[a] as number) ?? 0),

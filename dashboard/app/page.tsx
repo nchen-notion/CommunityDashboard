@@ -16,13 +16,15 @@ import { SEGMENT_COLORS } from "@/lib/theme";
 export default async function Home() {
   const [snap, events] = await Promise.all([loadSnapshot(), loadEvents()]);
   const eventsTotal = events.reduce((s, e) => s + e.rsvpCount, 0);
-  const history = loadHistory();
-  const platformHistory = loadPlatformHistory();
-  const dataSources = loadDataSourceHistory(eventsTotal);
+  const live = { snap, eventsTotal };
+  const history = loadHistory(live);
+  const platformHistory = loadPlatformHistory(live);
+  const dataSources = loadDataSourceHistory(live);
   const segments = [
     { name: "Ambassadors", value: snap.ambassadors.total },
     { name: "Campus Leaders", value: snap.campus_leaders.total },
     { name: "Groups", value: snap.groups.total },
+    { name: "Events", value: eventsTotal },
   ];
   const total = segments.reduce((s, x) => s + x.value, 0);
 
@@ -31,8 +33,16 @@ export default async function Home() {
     ...Object.keys(snap.campus_leaders.platforms),
     ...Object.keys(snap.groups.platforms),
   ]);
-  const bars = Array.from(platformSet)
-    .map((platform) => {
+  const bars = [
+    {
+      platform: "Luma Events",
+      Ambassadors: 0,
+      "Campus Leaders": 0,
+      Groups: 0,
+      Events: eventsTotal,
+      _total: eventsTotal,
+    },
+    ...Array.from(platformSet).map((platform) => {
       const a = snap.ambassadors.platforms[platform] ?? 0;
       const c = snap.campus_leaders.platforms[platform] ?? 0;
       const g = snap.groups.platforms[platform] ?? 0;
@@ -41,10 +51,11 @@ export default async function Home() {
         Ambassadors: a,
         "Campus Leaders": c,
         Groups: g,
+        Events: 0,
         _total: a + c + g,
       };
-    })
-    .sort((a, b) => b._total - a._total);
+    }),
+  ].sort((a, b) => b._total - a._total);
 
   return (
     <div className="space-y-12">
@@ -106,7 +117,8 @@ export default async function Home() {
         </h2>
         <PlatformBarChart
           data={bars}
-          keys={["Ambassadors", "Campus Leaders", "Groups"]}
+          keys={["Ambassadors", "Campus Leaders", "Groups", "Events"]}
+          colors={{ Events: "#6940a5" }}
           heightClass="h-[28rem]"
         />
       </section>
