@@ -67,7 +67,7 @@ export function loadHistory(): HistoryPoint[] {
 }
 
 export type DataSourceRow = {
-  segment: "Ambassadors" | "Campus Leaders" | "Groups";
+  segment: "Ambassadors" | "Campus Leaders" | "Groups" | "Events";
   label: string;
   values: Record<string, number>; // month -> count (empty if placeholder)
   placeholder?: string;
@@ -76,7 +76,8 @@ export type DataSourceRow = {
 type SourceSpec =
   | { kind: "rows" }
   | { kind: "platform"; key: string }
-  | { kind: "placeholder"; text: string };
+  | { kind: "placeholder"; text: string }
+  | { kind: "events-live" };
 
 type Canonical = {
   segment: DataSourceRow["segment"];
@@ -92,7 +93,6 @@ const CANONICAL: Canonical[] = [
   { segment: "Ambassadors", label: "Twitter Followers", source: { kind: "platform", key: "Twitter" } },
   { segment: "Ambassadors", label: "TikTok Followers", source: { kind: "platform", key: "TikTok" } },
   { segment: "Ambassadors", label: "LinkedIn Followers", source: { kind: "platform", key: "LinkedIn" } },
-  { segment: "Ambassadors", label: "Luma Events RSVPS", source: { kind: "placeholder", text: "Awaiting…" } },
   { segment: "Ambassadors", label: "Templates Made", source: { kind: "platform", key: "Notion templates" } },
 
   { segment: "Campus Leaders", label: "Members", source: { kind: "rows" } },
@@ -101,7 +101,8 @@ const CANONICAL: Canonical[] = [
   { segment: "Campus Leaders", label: "Twitter Followers", source: { kind: "placeholder", text: "No data" } },
   { segment: "Campus Leaders", label: "TikTok Followers", source: { kind: "placeholder", text: "No data" } },
   { segment: "Campus Leaders", label: "Youtube Followers", source: { kind: "placeholder", text: "No data" } },
-  { segment: "Campus Leaders", label: "Luma Event RSVPS", source: { kind: "placeholder", text: "Awaiting…" } },
+
+  { segment: "Events", label: "Total RSVPs", source: { kind: "events-live" } },
 
   { segment: "Groups", label: "Facebook Members", source: { kind: "platform", key: "Facebook" } },
   { segment: "Groups", label: "Meetup Members", source: { kind: "platform", key: "Meetup" } },
@@ -125,17 +126,25 @@ function pickSegment(snap: Snapshot, segment: DataSourceRow["segment"]): Segment
   return snap.groups;
 }
 
-export function loadDataSourceHistory(): {
+export function loadDataSourceHistory(eventsTotal?: number): {
   months: string[];
   rows: DataSourceRow[];
 } {
   const archives = readArchives();
-  const months = archives.map((a) => a.month);
+  const archiveMonths = archives.map((a) => a.month);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const addCurrentMonth = eventsTotal !== undefined && !archiveMonths.includes(currentMonth);
+  const months = addCurrentMonth ? [...archiveMonths, currentMonth] : archiveMonths;
 
   const rows: DataSourceRow[] = CANONICAL.map((c) => {
     const row: DataSourceRow = { segment: c.segment, label: c.label, values: {} };
     if (c.source.kind === "placeholder") {
       row.placeholder = c.source.text;
+      return row;
+    }
+    if (c.source.kind === "events-live") {
+      if (eventsTotal !== undefined) row.values[currentMonth] = eventsTotal;
+      else row.placeholder = "Live on /events";
       return row;
     }
     for (const { month, snap } of archives) {

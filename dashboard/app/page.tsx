@@ -9,14 +9,16 @@ import {
   loadHistory,
   loadPlatformHistory,
   loadDataSourceHistory,
+  loadEvents,
 } from "@/lib/data";
 import { SEGMENT_COLORS } from "@/lib/theme";
 
 export default async function Home() {
-  const snap = await loadSnapshot();
+  const [snap, events] = await Promise.all([loadSnapshot(), loadEvents()]);
+  const eventsTotal = events.reduce((s, e) => s + e.rsvpCount, 0);
   const history = loadHistory();
   const platformHistory = loadPlatformHistory();
-  const dataSources = loadDataSourceHistory();
+  const dataSources = loadDataSourceHistory(eventsTotal);
   const segments = [
     { name: "Ambassadors", value: snap.ambassadors.total },
     { name: "Campus Leaders", value: snap.campus_leaders.total },
@@ -53,7 +55,7 @@ export default async function Home() {
         <p className="mt-2 text-sm text-muted">Live from Notion</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Total reach" value={total} />
         <StatCard
           label="Ambassadors"
@@ -72,6 +74,12 @@ export default async function Home() {
           value={snap.groups.total}
           sub={`${snap.groups.rows} groups`}
           accent={SEGMENT_COLORS.Groups}
+        />
+        <StatCard
+          label="Event RSVPs"
+          value={eventsTotal}
+          sub={`${events.length} events`}
+          accent={SEGMENT_COLORS.Events}
         />
       </div>
 
