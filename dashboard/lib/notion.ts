@@ -190,7 +190,37 @@ export async function fetchEvents(): Promise<LumaEvent[]> {
     });
 }
 
-// Fetches snapshot + top ambassadors in one pass (single queryAll for ambassador DB).
+// Ambassador top-10: scans only the ambassador DB (5 API calls).
+// Campus/groups are NOT fetched here — the snapshot comes from the JSON archive.
+export async function fetchTopAmbassadors(n = 10): Promise<AmbassadorRow[]> {
+  const pages = await queryAll(AMBASSADOR_DB);
+  return pages
+    .map((page) => {
+      const youtube = num(page, "Youtube Followers");
+      const instagram = num(page, "Instagram Followers");
+      const twitter = num(page, "Twitter Followers");
+      const tiktok = num(page, "TikTok Followers");
+      const linkedin = num(page, "LinkedIn Followers");
+      const templates = num(page, "Templates Made");
+      return {
+        name: findTitle(page),
+        url: notionUrl(page),
+        youtube,
+        instagram,
+        twitter,
+        tiktok,
+        linkedin,
+        templates,
+        total: youtube + instagram + twitter + tiktok + linkedin + templates,
+      };
+    })
+    .filter((r) => r.name)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, n);
+}
+
+// Full snapshot + ambassador top-10 in one pass — only used when no JSON
+// archive exists for the current month (i.e., first days of each month).
 export async function fetchLiveSnapshotAndTopAmbassadors(): Promise<{
   snapshot: Snapshot;
   topAmbassadors: AmbassadorRow[];

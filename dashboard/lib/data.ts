@@ -3,6 +3,7 @@ import path from "node:path";
 import { unstable_cache } from "next/cache";
 import {
   fetchLiveSnapshotAndTopAmbassadors,
+  fetchTopAmbassadors,
   fetchEvents,
   fetchTopCampusLeaders,
   fetchTopGroups,
@@ -78,7 +79,14 @@ function readArchives(): { month: string; snap: Snapshot }[] {
 // Cached Notion fetches — called at most once per 30 min across all requests
 // ---------------------------------------------------------------------------
 
-// Ambassador DB: one scan shared between snapshot fallback + top-10 list.
+// Ambassador top-10: scans only ambassador DB (5 Notion API calls).
+const _cachedTopAmbassadors = unstable_cache(
+  () => fetchTopAmbassadors(),
+  ["top-ambassadors"],
+  { revalidate: 1800 },
+);
+
+// Full snapshot fetch — only called when no JSON archive exists for the month.
 const _cachedAmbData = unstable_cache(
   () => fetchLiveSnapshotAndTopAmbassadors(),
   ["amb-data"],
@@ -118,9 +126,8 @@ export async function loadSnapshot(): Promise<Snapshot> {
   return (await _cachedAmbData()).snapshot;
 }
 
-// Ambassador top-10 always comes from live Notion (computed sort by total).
 export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {
-  return (await _cachedAmbData()).topAmbassadors;
+  return _cachedTopAmbassadors();
 }
 
 export async function loadTopCampusLeaders(): Promise<CampusLeaderRow[]> {
