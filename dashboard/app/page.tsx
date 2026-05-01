@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { StatCard } from "@/components/StatCard";
 import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";

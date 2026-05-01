@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { SegmentView } from "@/components/SegmentView";
 import { TopGroupsTable } from "@/components/TopGroupsTable";
 import { loadSnapshot, loadTopGroups } from "@/lib/data";
