@@ -1,4 +1,29 @@
-import type { PlatformTotals, SegmentSnapshot, Snapshot, LumaEvent } from "./data";
+import type {
+  PlatformTotals,
+  SegmentSnapshot,
+  Snapshot,
+  LumaEvent,
+  AmbassadorRow,
+  CampusLeaderRow,
+  GroupRow,
+} from "./data";
+
+function findTitle(page: Record<string, unknown>): string {
+  const props = page.properties as Record<
+    string,
+    { type?: string; title?: Array<{ plain_text?: string }> }
+  >;
+  for (const prop of Object.values(props)) {
+    if (prop.type === "title" && prop.title) {
+      return prop.title.map((t) => t.plain_text ?? "").join("").trim();
+    }
+  }
+  return "";
+}
+
+function pageUrl(page: Record<string, unknown>): string {
+  return (page.url as string) ?? "";
+}
 
 const TOKEN = process.env.NOTION_TOKEN ?? "";
 const AMBASSADOR_DB = process.env.NOTION_DATABASE_ID ?? "";
@@ -128,6 +153,60 @@ export async function fetchEvents(): Promise<LumaEvent[]> {
       if (!b.date) return -1;
       return b.date.localeCompare(a.date);
     });
+}
+
+export async function fetchTopAmbassadors(n = 10): Promise<AmbassadorRow[]> {
+  const pages = await queryAll(AMBASSADOR_DB);
+  return pages
+    .map((page) => {
+      const youtube = num(page, "Youtube Followers");
+      const instagram = num(page, "Instagram Followers");
+      const twitter = num(page, "Twitter Followers");
+      const tiktok = num(page, "TikTok Followers");
+      const linkedin = num(page, "LinkedIn Followers");
+      const templates = num(page, "Templates Made");
+      return {
+        name: findTitle(page),
+        url: pageUrl(page),
+        youtube,
+        instagram,
+        twitter,
+        tiktok,
+        linkedin,
+        templates,
+        total: youtube + instagram + twitter + tiktok + linkedin + templates,
+      };
+    })
+    .filter((r) => r.name)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, n);
+}
+
+export async function fetchTopCampusLeaders(n = 10): Promise<CampusLeaderRow[]> {
+  const pages = await queryAll(CAMPUS_DB);
+  return pages
+    .map((page) => ({
+      name: findTitle(page),
+      url: pageUrl(page),
+      linkedin: num(page, "LinkedIn Followers"),
+    }))
+    .filter((r) => r.name)
+    .sort((a, b) => b.linkedin - a.linkedin)
+    .slice(0, n);
+}
+
+export async function fetchTopGroups(n = 10): Promise<GroupRow[]> {
+  const pages = await queryAll(GROUPS_DB);
+  return pages
+    .map((page) => ({
+      name: findTitle(page),
+      url: pageUrl(page),
+      platform: sel(page, "Platform"),
+      followers: num(page, "Followers"),
+    }))
+    .filter((r) => r.name)
+    .sort((a, b) => b.followers - a.followers)
+    .slice(0, n);
 }
 
 export async function fetchLiveSnapshot(): Promise<Snapshot> {

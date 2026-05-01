@@ -1,7 +1,38 @@
 import fs from "node:fs";
 import path from "node:path";
 import { unstable_cache } from "next/cache";
-import { fetchLiveSnapshot, fetchEvents } from "./notion";
+import {
+  fetchLiveSnapshot,
+  fetchEvents,
+  fetchTopAmbassadors,
+  fetchTopCampusLeaders,
+  fetchTopGroups,
+} from "./notion";
+
+export type AmbassadorRow = {
+  name: string;
+  url: string;
+  youtube: number;
+  instagram: number;
+  twitter: number;
+  tiktok: number;
+  linkedin: number;
+  templates: number;
+  total: number;
+};
+
+export type CampusLeaderRow = {
+  name: string;
+  url: string;
+  linkedin: number;
+};
+
+export type GroupRow = {
+  name: string;
+  url: string;
+  platform: string;
+  followers: number;
+};
 
 export type PlatformTotals = Record<string, number>;
 
@@ -227,6 +258,36 @@ export function loadPlatformHistory(live?: LiveTotals): {
 
 export async function loadEvents(): Promise<LumaEvent[]> {
   return _cachedEvents();
+}
+
+const _cachedTopAmbassadors = unstable_cache(
+  () => fetchTopAmbassadors(),
+  ["top-ambassadors"],
+  { revalidate: 1800 },
+);
+
+const _cachedTopCampusLeaders = unstable_cache(
+  () => fetchTopCampusLeaders(),
+  ["top-campus-leaders"],
+  { revalidate: 1800 },
+);
+
+const _cachedTopGroups = unstable_cache(
+  () => fetchTopGroups(),
+  ["top-groups"],
+  { revalidate: 1800 },
+);
+
+export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {
+  return _cachedTopAmbassadors();
+}
+
+export async function loadTopCampusLeaders(): Promise<CampusLeaderRow[]> {
+  return _cachedTopCampusLeaders();
+}
+
+export async function loadTopGroups(): Promise<GroupRow[]> {
+  return _cachedTopGroups();
 }
 
 export { formatNumber } from "./format";
