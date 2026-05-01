@@ -3,12 +3,10 @@ import { PlatformBarChart } from "@/components/PlatformBarChart";
 import { SegmentPieChart } from "@/components/SegmentPieChart";
 import { TrendChart } from "@/components/TrendChart";
 import { PlatformTrendChart } from "@/components/PlatformTrendChart";
-import { DataSourceTable } from "@/components/DataSourceTable";
 import {
   loadSnapshot,
   loadHistory,
   loadPlatformHistory,
-  loadDataSourceHistory,
   loadEvents,
 } from "@/lib/data";
 import { SEGMENT_COLORS } from "@/lib/theme";
@@ -19,7 +17,6 @@ export default async function Home() {
   const live = { snap, eventsTotal };
   const history = loadHistory(live);
   const platformHistory = loadPlatformHistory(live);
-  const dataSources = loadDataSourceHistory(live);
   const segments = [
     { name: "Ambassadors", value: snap.ambassadors.total },
     { name: "Campus Leaders", value: snap.campus_leaders.total },
@@ -135,13 +132,16 @@ export default async function Home() {
         <PlatformTrendChart data={platformHistory.data} platforms={platformHistory.platforms} />
       </section>
 
-      <section className="space-y-4">
-        <h2 className="font-serif text-2xl font-semibold tracking-tight">Data sources</h2>
-        <p className="text-sm text-muted">
-          Each row is one (segment, platform) reading. A new column lands every 1st of the month at 06:00 UTC.
-        </p>
-        <DataSourceTable months={dataSources.months} rows={dataSources.rows} />
-      </section>
+      <p className="text-sm text-muted">
+        <a
+          href="https://www.notion.so/Community-Data-Scrape-352acd52633380689c7efd08da2097cc?source=copy_link"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline"
+        >
+          Data source ↗
+        </a>
+      </p>
     </div>
   );
 }
