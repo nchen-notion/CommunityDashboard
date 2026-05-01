@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Inter, Source_Serif_4 } from "next/font/google";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -48,11 +49,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NotionMark />
               <span>Community Dashboard</span>
             </Link>
-            <nav className="flex gap-7 text-sm text-muted">
+            <nav className="flex items-center gap-7 text-sm text-muted">
               <Link href="/" className="transition-colors hover:text-ink">Overview</Link>
               <Link href="/ambassadors" className="transition-colors hover:text-ink">Ambassadors</Link>
               <Link href="/campus-leaders" className="transition-colors hover:text-ink">Campus Leaders</Link>
               <Link href="/groups" className="transition-colors hover:text-ink">Groups</Link>
+              <Link href="/events" className="transition-colors hover:text-ink">Events</Link>
+              <RefreshButton />
             </nav>
           </div>
         </header>

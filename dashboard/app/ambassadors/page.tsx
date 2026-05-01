@@ -1,8 +1,8 @@
 import { SegmentView } from "@/components/SegmentView";
 import { loadSnapshot } from "@/lib/data";
 
-export default function AmbassadorsPage() {
-  const snap = loadSnapshot();
+export default async function AmbassadorsPage() {
+  const snap = await loadSnapshot();
   return (
     <SegmentView
       title="Ambassador Reach"

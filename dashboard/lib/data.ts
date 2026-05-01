@@ -1,7 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fetchLiveSnapshot, fetchEvents } from "./notion";
 
 export type PlatformTotals = Record<string, number>;
+
+export type LumaEvent = {
+  name: string;
+  date: string | null;
+  rsvpCount: number;
+  host: string;
+  location: string;
+  url: string;
+};
 
 export type SegmentSnapshot = {
   rows: number;
@@ -16,19 +26,9 @@ export type Snapshot = {
   groups: SegmentSnapshot;
 };
 
-const EMPTY: SegmentSnapshot = { rows: 0, total: 0, platforms: {} };
-
-export function loadSnapshot(): Snapshot {
-  const file = path.join(process.cwd(), "public", "data", "snapshot.json");
-  if (!fs.existsSync(file)) {
-    return {
-      generated_at: "",
-      ambassadors: EMPTY,
-      campus_leaders: EMPTY,
-      groups: EMPTY,
-    };
-  }
-  return JSON.parse(fs.readFileSync(file, "utf8"));
+// Live data always comes from Notion directly — no JSON file needed.
+export async function loadSnapshot(): Promise<Snapshot> {
+  return fetchLiveSnapshot();
 }
 
 export type HistoryPoint = {
@@ -172,6 +172,10 @@ export function loadPlatformHistory(): {
     (a, b) => ((latest[b] as number) ?? 0) - ((latest[a] as number) ?? 0),
   );
   return { data, platforms };
+}
+
+export async function loadEvents(): Promise<LumaEvent[]> {
+  return fetchEvents();
 }
 
 export { formatNumber } from "./format";

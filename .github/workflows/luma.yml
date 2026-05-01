@@ -1,0 +1,48 @@
+name: Luma Event RSVPs
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Process only the first N new events (blank for all)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Fetch data but do not write to Notion (true/false)"
+        required: false
+        default: "false"
+
+jobs:
+  scrape-luma:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Luma RSVP scraper
+        working-directory: luma
+        env:
+          LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
+          LUMA_CALENDAR_ID: ${{ secrets.LUMA_CALENDAR_ID }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_LUMA_EVENTS_DATABASE: ${{ secrets.NOTION_LUMA_EVENTS_DATABASE }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python main.py $ARGS

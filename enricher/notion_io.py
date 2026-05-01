@@ -58,7 +58,9 @@ def _parse_page(page: dict) -> dict:
         return "".join(t.get("plain_text", "") for t in items).strip()
 
     def get_url(key):
-        return props.get(key, {}).get("url", "") or ""
+        prop = props.get(key, {})
+        # Some fields (e.g. YouTube) are stored as Notion's email type instead of url
+        return prop.get("url", "") or prop.get("email", "") or ""
 
     def get_number(key):
         return props.get(key, {}).get("number")

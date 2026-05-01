@@ -1,8 +1,8 @@
 import { SegmentView } from "@/components/SegmentView";
 import { loadSnapshot } from "@/lib/data";
 
-export default function GroupsPage() {
-  const snap = loadSnapshot();
+export default async function GroupsPage() {
+  const snap = await loadSnapshot();
   return (
     <SegmentView
       title="Groups Reach"

@@ -14,6 +14,11 @@ export const SEGMENT_COLORS = {
     soft: "#faebdd",
     border: "#d9730d",
   },
+  Events: {
+    fill: "#6940a5",
+    soft: "#e8deee",
+    border: "#6940a5",
+  },
 } as const;
 
 export type SegmentName = keyof typeof SEGMENT_COLORS;

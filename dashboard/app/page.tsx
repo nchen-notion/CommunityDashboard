@@ -12,8 +12,8 @@ import {
 } from "@/lib/data";
 import { SEGMENT_COLORS } from "@/lib/theme";
 
-export default function Home() {
-  const snap = loadSnapshot();
+export default async function Home() {
+  const snap = await loadSnapshot();
   const history = loadHistory();
   const platformHistory = loadPlatformHistory();
   const dataSources = loadDataSourceHistory();
@@ -50,11 +50,7 @@ export default function Home() {
         <h1 className="font-serif text-4xl font-semibold tracking-tight text-ink">
           Community Aggregate Reach
         </h1>
-        <p className="mt-2 text-sm text-muted">
-          {snap.generated_at
-            ? `Snapshot generated ${new Date(snap.generated_at).toLocaleDateString()}`
-            : "No snapshot yet — run `npm run snapshot`."}
-        </p>
+        <p className="mt-2 text-sm text-muted">Live from Notion</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

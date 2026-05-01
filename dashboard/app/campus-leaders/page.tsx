@@ -1,8 +1,8 @@
 import { SegmentView } from "@/components/SegmentView";
 import { loadSnapshot } from "@/lib/data";
 
-export default function CampusLeadersPage() {
-  const snap = loadSnapshot();
+export default async function CampusLeadersPage() {
+  const snap = await loadSnapshot();
   return (
     <SegmentView
       title="Campus Leaders Reach"
