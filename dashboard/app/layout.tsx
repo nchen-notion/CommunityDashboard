@@ -43,13 +43,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable}`}>
       <body className="bg-paper font-sans text-ink antialiased">
-        <header className="border-b border-rule bg-paper">
+        <header className="sticky top-0 z-10 border-b border-rule bg-paper">
           <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-8 py-5">
-            <Link href="/" className="flex items-center gap-2 font-serif text-xl font-semibold tracking-tight text-ink">
+            <Link href="/" className="flex shrink-0 items-center gap-2 font-serif text-xl font-semibold tracking-tight text-ink">
               <NotionMark />
-              <span>Community Dashboard</span>
+              <span className="hidden sm:inline">Community Dashboard</span>
             </Link>
-            <nav className="flex items-center gap-7 text-sm text-muted">
+            <nav className="scrollbar-none flex items-center gap-5 overflow-x-auto text-sm text-muted">
               <Link href="/" className="transition-colors hover:text-ink">Overview</Link>
               <Link href="/ambassadors" className="transition-colors hover:text-ink">Ambassadors</Link>
               <Link href="/campus-leaders" className="transition-colors hover:text-ink">Campus Leaders</Link>

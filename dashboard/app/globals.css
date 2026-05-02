@@ -8,3 +8,20 @@ html, body {
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+html {
+  overflow-x: clip; /* prevents horizontal drift without breaking sticky */
+}
+
+body {
+  overscroll-behavior: none; /* kills rubber-band bounce on iOS */
+}
+
+/* hide scrollbar on the mobile nav strip */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
