@@ -51,9 +51,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NotionMark />
                 <span className="hidden sm:inline">Community Dashboard</span>
               </Link>
-              <div className="flex items-center gap-2">
-                <SnapshotButton />
-                <RefreshButton />
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[10px] text-muted">Only Nancy should touch this</span>
+                <div className="flex items-start gap-2">
+                  <SnapshotButton />
+                  <RefreshButton />
+                </div>
               </div>
             </div>
             <nav className="scrollbar-none mt-2 flex items-center gap-5 overflow-x-auto text-xs text-muted pb-3">
