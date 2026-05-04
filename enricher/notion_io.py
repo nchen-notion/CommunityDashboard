@@ -77,11 +77,13 @@ def _parse_page(page: dict) -> dict:
 
 
 def update_page(page_id: str, counts: dict[str, int | None]):
-    """counts maps platform key -> count (or None to clear). Only platforms in dict are written."""
+    """counts maps platform key -> count. Only successfully scraped (non-None) values are written."""
     properties = {}
     for platform, count in counts.items():
+        if count is None:
+            continue  # scrape failed — leave existing Notion value untouched
         field = COUNT_FIELDS[platform]
-        properties[field] = {"number": count if count is not None else None}
+        properties[field] = {"number": count}
     if not properties:
         return
     resp = requests.patch(

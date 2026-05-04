@@ -1,0 +1,46 @@
+name: Monthly Snapshot
+
+on:
+  workflow_dispatch:      # manual trigger from GitHub Actions UI
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Run scrapers + snapshot
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_CAMPUS_LEADERS_DATABASE_ID: ${{ secrets.NOTION_CAMPUS_LEADERS_DATABASE_ID }}
+          NOTION_GROUPS_DATABASE_ID: ${{ secrets.NOTION_GROUPS_DATABASE_ID }}
+          NOTION_LUMA_EVENTS_DATABASE: ${{ secrets.NOTION_LUMA_EVENTS_DATABASE }}
+          NOTION_SNAPSHOTS_DATABASE_ID: ${{ secrets.NOTION_SNAPSHOTS_DATABASE_ID }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
+          LUMA_CALENDAR_ID: ${{ secrets.LUMA_CALENDAR_ID }}
+        run: |
+          python3 enricher/main.py
+          python3 campus_leaders/linkedin_followers.py
+          python3 groups/main.py
+          python3 luma/main.py
+          python3 dashboard/scripts/generate_snapshot.py
+
+      - name: Commit snapshot JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard/public/data/
+          git diff --staged --quiet || git commit -m "chore: monthly snapshot $(date +%Y-%m)"
+          git push

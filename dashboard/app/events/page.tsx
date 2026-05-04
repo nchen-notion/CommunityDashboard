@@ -17,7 +17,7 @@ export default async function EventsPage() {
         <h1 className="font-serif text-4xl font-semibold tracking-tight text-ink">
           Luma Events
         </h1>
-        <p className="mt-2 text-sm text-muted">Live from Notion · {events.length} events</p>
+        <p className="mt-2 text-sm text-muted">{events.length} events</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

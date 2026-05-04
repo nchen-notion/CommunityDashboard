@@ -5,15 +5,7 @@ import { SEGMENT_COLORS } from "@/lib/theme";
 type Row = { label: string; value: number };
 type Group = { segment: string; color: string; soft: string; rows: Row[] };
 
-export function AllDataTable({
-  snap,
-  eventsTotal,
-  eventCount,
-}: {
-  snap: Snapshot;
-  eventsTotal: number;
-  eventCount: number;
-}) {
+export function AllDataTable({ snap }: { snap: Snapshot }) {
   const groups: Group[] = [
     {
       segment: "Ambassadors",
@@ -36,15 +28,6 @@ export function AllDataTable({
       rows: [
         { label: "Members", value: snap.campus_leaders.rows },
         { label: "LinkedIn Followers", value: snap.campus_leaders.platforms["LinkedIn"] ?? 0 },
-      ],
-    },
-    {
-      segment: "Events",
-      color: SEGMENT_COLORS.Events.fill,
-      soft: SEGMENT_COLORS.Events.soft,
-      rows: [
-        { label: "Total Events", value: eventCount },
-        { label: "Total RSVPs", value: eventsTotal },
       ],
     },
     {

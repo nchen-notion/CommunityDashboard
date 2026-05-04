@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import {
   fetchLiveSnapshot,
   fetchEvents,
+  fetchSnapshotArchives,
   fetchTopAmbassadors,
   fetchTopCampusLeaders,
   fetchTopGroups,
@@ -87,23 +88,20 @@ export type PlatformHistoryPoint = {
   month: string;
 } & Record<string, number | string>;
 
-function readArchives(): { month: string; snap: Snapshot }[] {
-  const dir = path.join(process.cwd(), "public", "data", "snapshots");
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => ({
-      month: f.replace(/\.json$/, ""),
-      snap: JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Snapshot,
-    }));
+const _cachedArchives = unstable_cache(
+  () => fetchSnapshotArchives(),
+  ["snapshot-archives"],
+  { revalidate: 6 * 3600 },
+);
+
+async function readArchives(): Promise<{ month: string; snap: Snapshot }[]> {
+  return _cachedArchives();
 }
 
 type LiveTotals = { snap: Snapshot; eventsTotal: number };
 
-export function loadHistory(live?: LiveTotals): HistoryPoint[] {
-  const archives = readArchives();
+export async function loadHistory(live?: LiveTotals): Promise<HistoryPoint[]> {
+  const archives = await readArchives();
   const currentMonth = new Date().toISOString().slice(0, 7);
   const points: HistoryPoint[] = archives.map(({ month, snap }) => ({
     month,
@@ -187,11 +185,11 @@ function pickSegment(snap: Snapshot, segment: DataSourceRow["segment"]): Segment
   return snap.groups;
 }
 
-export function loadDataSourceHistory(live?: LiveTotals): {
+export async function loadDataSourceHistory(live?: LiveTotals): Promise<{
   months: string[];
   rows: DataSourceRow[];
-} {
-  const archives = readArchives();
+}> {
+  const archives = await readArchives();
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
   const allEntries = live && !hasCurrentMonth
@@ -222,11 +220,11 @@ export function loadDataSourceHistory(live?: LiveTotals): {
   return { months, rows };
 }
 
-export function loadPlatformHistory(live?: LiveTotals): {
+export async function loadPlatformHistory(live?: LiveTotals): Promise<{
   data: PlatformHistoryPoint[];
   platforms: string[];
-} {
-  const archives = readArchives();
+}> {
+  const archives = await readArchives();
   const currentMonth = new Date().toISOString().slice(0, 7);
   const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
   const allEntries = live && !hasCurrentMonth

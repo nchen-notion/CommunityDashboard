@@ -44,18 +44,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${serif.variable}`}>
       <body className="bg-paper font-sans text-ink antialiased">
         <header className="sticky top-0 z-10 border-b border-rule bg-paper">
-          <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-8 py-5">
-            <Link href="/" className="flex shrink-0 items-center gap-2 font-serif text-xl font-semibold tracking-tight text-ink">
-              <NotionMark />
-              <span className="hidden sm:inline">Community Dashboard</span>
-            </Link>
-            <nav className="scrollbar-none flex items-center gap-5 overflow-x-auto text-sm text-muted">
-              <Link href="/" className="transition-colors hover:text-ink">Overview</Link>
+          <div className="mx-auto max-w-screen-2xl px-8 pt-4 pb-0">
+            <div className="flex items-center justify-between">
+              <Link href="/" className="flex shrink-0 items-center gap-2 font-serif text-xl font-semibold tracking-tight text-ink">
+                <NotionMark />
+                <span className="hidden sm:inline">Community Dashboard</span>
+              </Link>
+              <RefreshButton />
+            </div>
+            <nav className="scrollbar-none mt-2 flex items-center gap-5 overflow-x-auto text-xs text-muted pb-3">
+              <Link href="/" className="transition-colors hover:text-ink">Reach</Link>
               <Link href="/ambassadors" className="transition-colors hover:text-ink">Ambassadors</Link>
               <Link href="/campus-leaders" className="transition-colors hover:text-ink">Campus Leaders</Link>
               <Link href="/groups" className="transition-colors hover:text-ink">Groups</Link>
               <Link href="/events" className="transition-colors hover:text-ink">Events</Link>
-              <RefreshButton />
             </nav>
           </div>
         </header>

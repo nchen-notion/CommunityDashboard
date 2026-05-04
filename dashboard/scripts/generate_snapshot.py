@@ -27,6 +27,7 @@ NOTION_TOKEN = os.getenv("NOTION_TOKEN", "")
 AMBASSADOR_DB = os.getenv("NOTION_DATABASE_ID", "")
 CAMPUS_DB = os.getenv("NOTION_CAMPUS_LEADERS_DATABASE_ID", "")
 GROUPS_DB = os.getenv("NOTION_GROUPS_DATABASE_ID", "")
+SNAPSHOTS_DB = os.getenv("NOTION_SNAPSHOTS_DATABASE_ID", "")
 
 HEADERS = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
@@ -110,6 +111,79 @@ def groups_snapshot() -> dict:
     }
 
 
+def build_notion_properties(snap: dict, month_key: str) -> dict:
+    a = snap["ambassadors"]
+    cl = snap["campus_leaders"]
+    g = snap["groups"]
+    total = a["total"] + cl["total"] + g["total"]
+    return {
+        "Month": {"title": [{"text": {"content": month_key}}]},
+        "Generated At": {"date": {"start": snap["generated_at"]}},
+        "Total Reach": {"number": total},
+        "Ambassador Members": {"number": a["rows"]},
+        "Ambassador Reach": {"number": a["total"]},
+        "Ambassador YouTube": {"number": a["platforms"].get("YouTube", 0)},
+        "Ambassador Instagram": {"number": a["platforms"].get("Instagram", 0)},
+        "Ambassador TikTok": {"number": a["platforms"].get("TikTok", 0)},
+        "Ambassador Twitter": {"number": a["platforms"].get("Twitter", 0)},
+        "Ambassador LinkedIn": {"number": a["platforms"].get("LinkedIn", 0)},
+        "Ambassador Notion Templates": {"number": a["platforms"].get("Notion templates", 0)},
+        "Campus Leaders Members": {"number": cl["rows"]},
+        "Campus Leaders Reach": {"number": cl["total"]},
+        "Campus Leaders LinkedIn": {"number": cl["platforms"].get("LinkedIn", 0)},
+        "Groups Count": {"number": g["rows"]},
+        "Groups Reach": {"number": g["total"]},
+        "Groups Facebook": {"number": g["platforms"].get("Facebook", 0)},
+        "Groups Meetup": {"number": g["platforms"].get("Meetup", 0)},
+        "Groups Peatix": {"number": g["platforms"].get("Peatix", 0)},
+        "Groups Circle": {"number": g["platforms"].get("Circle", 0)},
+        "Groups LinkedIn": {"number": g["platforms"].get("LinkedIn", 0)},
+        "Groups Twitter": {"number": g["platforms"].get("Twitter", 0)},
+        "Groups Reddit": {"number": g["platforms"].get("Reddit", 0)},
+        "Groups Discord": {"number": g["platforms"].get("Discord", 0)},
+        "Groups Connpass": {"number": g["platforms"].get("Connpass", 0)},
+        "Groups Slack": {"number": g["platforms"].get("Slack", 0)},
+        "Groups Clubhouse": {"number": g["platforms"].get("Clubhouse", 0)},
+        "Groups Telegram": {"number": g["platforms"].get("Telegram", 0)},
+        "Groups Instagram": {"number": g["platforms"].get("Instagram", 0)},
+        "Groups Website": {"number": g["platforms"].get("Website", 0)},
+    }
+
+
+def upsert_notion_snapshot(snap: dict, month_key: str):
+    if not SNAPSHOTS_DB:
+        print("  NOTION_SNAPSHOTS_DATABASE_ID not set — skipping Notion write")
+        return
+
+    # Check for existing row with same month
+    r = requests.post(
+        f"https://api.notion.com/v1/databases/{SNAPSHOTS_DB}/query",
+        headers=HEADERS,
+        json={"filter": {"property": "Month", "title": {"equals": month_key}}},
+    )
+    r.raise_for_status()
+    results = r.json().get("results", [])
+    props = build_notion_properties(snap, month_key)
+
+    if results:
+        page_id = results[0]["id"]
+        r = requests.patch(
+            f"https://api.notion.com/v1/pages/{page_id}",
+            headers=HEADERS,
+            json={"properties": props},
+        )
+        r.raise_for_status()
+        print(f"  Updated Notion snapshot row for {month_key}")
+    else:
+        r = requests.post(
+            "https://api.notion.com/v1/pages",
+            headers=HEADERS,
+            json={"parent": {"database_id": SNAPSHOTS_DB}, "properties": props},
+        )
+        r.raise_for_status()
+        print(f"  Created Notion snapshot row for {month_key}")
+
+
 def main():
     missing = [k for k, v in {
         "NOTION_TOKEN": NOTION_TOKEN,
@@ -128,6 +202,8 @@ def main():
         "groups": groups_snapshot(),
     }
 
+    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+
     data_dir = Path(__file__).resolve().parent.parent / "public" / "data"
     archive_dir = data_dir / "snapshots"
     archive_dir.mkdir(parents=True, exist_ok=True)
@@ -136,12 +212,13 @@ def main():
     latest = data_dir / "snapshot.json"
     latest.write_text(payload)
 
-    # Dated archive — keyed by year-month so re-runs in the same month overwrite
-    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
     archived = archive_dir / f"{month_key}.json"
     archived.write_text(payload)
     print(f"Wrote {latest}")
     print(f"Wrote {archived}")
+
+    upsert_notion_snapshot(snap, month_key)
+
     print(f"  Ambassadors:    {snap['ambassadors']['total']:>12,} across {snap['ambassadors']['rows']} rows")
     print(f"  Campus Leaders: {snap['campus_leaders']['total']:>12,} across {snap['campus_leaders']['rows']} rows")
     print(f"  Groups:         {snap['groups']['total']:>12,} across {snap['groups']['rows']} rows")

@@ -30,6 +30,7 @@ const AMBASSADOR_DB = process.env.NOTION_DATABASE_ID ?? "";
 const CAMPUS_DB = process.env.NOTION_CAMPUS_LEADERS_DATABASE_ID ?? "";
 const GROUPS_DB = process.env.NOTION_GROUPS_DATABASE_ID ?? "";
 const EVENTS_DB = process.env.NOTION_LUMA_EVENTS_DATABASE ?? "";
+const SNAPSHOTS_DB = process.env.NOTION_SNAPSHOTS_DATABASE_ID ?? "";
 
 const HEADERS = {
   Authorization: `Bearer ${TOKEN}`,
@@ -207,6 +208,64 @@ export async function fetchTopGroups(n = 10): Promise<GroupRow[]> {
     .filter((r) => r.name)
     .sort((a, b) => b.followers - a.followers)
     .slice(0, n);
+}
+
+export async function fetchSnapshotArchives(): Promise<{ month: string; snap: Snapshot }[]> {
+  if (!SNAPSHOTS_DB) return [];
+  const pages = await queryAll(SNAPSHOTS_DB);
+  return pages
+    .map((page) => {
+      const p = page.properties as Record<string, Record<string, unknown>>;
+      const n = (key: string): number => (p[key]?.number as number) ?? 0;
+      const month = ((p["Month"]?.title as Array<{ plain_text?: string }>)?.[0]?.plain_text ?? "").trim();
+      const generated_at = (p["Generated At"]?.date as { start?: string } | null)?.start ?? new Date().toISOString();
+      if (!month) return null;
+      return {
+        month,
+        snap: {
+          generated_at,
+          ambassadors: {
+            rows: n("Ambassador Members"),
+            total: n("Ambassador Reach"),
+            platforms: {
+              YouTube: n("Ambassador YouTube"),
+              Instagram: n("Ambassador Instagram"),
+              TikTok: n("Ambassador TikTok"),
+              Twitter: n("Ambassador Twitter"),
+              LinkedIn: n("Ambassador LinkedIn"),
+              "Notion templates": n("Ambassador Notion Templates"),
+            },
+          },
+          campus_leaders: {
+            rows: n("Campus Leaders Members"),
+            total: n("Campus Leaders Reach"),
+            platforms: { LinkedIn: n("Campus Leaders LinkedIn") },
+          },
+          groups: {
+            rows: n("Groups Count"),
+            total: n("Groups Reach"),
+            platforms: {
+              Facebook: n("Groups Facebook"),
+              Meetup: n("Groups Meetup"),
+              Peatix: n("Groups Peatix"),
+              Circle: n("Groups Circle"),
+              LinkedIn: n("Groups LinkedIn"),
+              Twitter: n("Groups Twitter"),
+              Reddit: n("Groups Reddit"),
+              Discord: n("Groups Discord"),
+              Connpass: n("Groups Connpass"),
+              Slack: n("Groups Slack"),
+              Clubhouse: n("Groups Clubhouse"),
+              Telegram: n("Groups Telegram"),
+              Instagram: n("Groups Instagram"),
+              Website: n("Groups Website"),
+            },
+          },
+        } satisfies Snapshot,
+      };
+    })
+    .filter((a) => a !== null)
+    .sort((a, b) => a.month.localeCompare(b.month)) as { month: string; snap: Snapshot }[];
 }
 
 export async function fetchLiveSnapshot(): Promise<Snapshot> {

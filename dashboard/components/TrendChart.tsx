@@ -16,7 +16,6 @@ const SERIES = [
   { key: "ambassadors", label: "Ambassadors", color: "#0b6e99" },
   { key: "campus_leaders", label: "Campus Leaders", color: "#0f7b6c" },
   { key: "groups", label: "Groups", color: "#d9730d" },
-  { key: "events", label: "Events", color: "#6940a5" },
 ] as const;
 
 function formatMonth(ym: string): string {
