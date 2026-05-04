@@ -210,6 +210,70 @@ export async function fetchTopGroups(n = 10): Promise<GroupRow[]> {
     .slice(0, n);
 }
 
+export async function writeSnapshot(snap: Snapshot): Promise<void> {
+  if (!SNAPSHOTS_DB) throw new Error("NOTION_SNAPSHOTS_DATABASE_ID not set");
+  const month = new Date().toISOString().slice(0, 7);
+  const a = snap.ambassadors;
+  const cl = snap.campus_leaders;
+  const g = snap.groups;
+  const total = a.total + cl.total + g.total;
+
+  const properties: Record<string, unknown> = {
+    "Month": { title: [{ text: { content: month } }] },
+    "Generated At": { date: { start: snap.generated_at } },
+    "Total Reach": { number: total },
+    "Ambassador Members": { number: a.rows },
+    "Ambassador Reach": { number: a.total },
+    "Ambassador YouTube": { number: a.platforms["YouTube"] ?? 0 },
+    "Ambassador Instagram": { number: a.platforms["Instagram"] ?? 0 },
+    "Ambassador TikTok": { number: a.platforms["TikTok"] ?? 0 },
+    "Ambassador Twitter": { number: a.platforms["Twitter"] ?? 0 },
+    "Ambassador LinkedIn": { number: a.platforms["LinkedIn"] ?? 0 },
+    "Ambassador Notion Templates": { number: a.platforms["Notion templates"] ?? 0 },
+    "Campus Leaders Members": { number: cl.rows },
+    "Campus Leaders Reach": { number: cl.total },
+    "Campus Leaders LinkedIn": { number: cl.platforms["LinkedIn"] ?? 0 },
+    "Groups Count": { number: g.rows },
+    "Groups Reach": { number: g.total },
+    "Groups Facebook": { number: g.platforms["Facebook"] ?? 0 },
+    "Groups Meetup": { number: g.platforms["Meetup"] ?? 0 },
+    "Groups Peatix": { number: g.platforms["Peatix"] ?? 0 },
+    "Groups Circle": { number: g.platforms["Circle"] ?? 0 },
+    "Groups LinkedIn": { number: g.platforms["LinkedIn"] ?? 0 },
+    "Groups Twitter": { number: g.platforms["Twitter"] ?? 0 },
+    "Groups Reddit": { number: g.platforms["Reddit"] ?? 0 },
+    "Groups Discord": { number: g.platforms["Discord"] ?? 0 },
+    "Groups Connpass": { number: g.platforms["Connpass"] ?? 0 },
+    "Groups Slack": { number: g.platforms["Slack"] ?? 0 },
+    "Groups Clubhouse": { number: g.platforms["Clubhouse"] ?? 0 },
+    "Groups Telegram": { number: g.platforms["Telegram"] ?? 0 },
+    "Groups Instagram": { number: g.platforms["Instagram"] ?? 0 },
+    "Groups Website": { number: g.platforms["Website"] ?? 0 },
+  };
+
+  // Check for existing row with same month and update, otherwise create
+  const search = await fetch(`https://api.notion.com/v1/databases/${SNAPSHOTS_DB}/query`, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify({ filter: { property: "Month", title: { equals: month } } }),
+  });
+  const { results } = await search.json() as { results: Array<{ id: string }> };
+
+  if (results.length > 0) {
+    await fetch(`https://api.notion.com/v1/pages/${results[0].id}`, {
+      method: "PATCH",
+      headers: HEADERS,
+      body: JSON.stringify({ properties }),
+    });
+  } else {
+    await fetch("https://api.notion.com/v1/pages", {
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify({ parent: { database_id: SNAPSHOTS_DB }, properties }),
+    });
+  }
+}
+
 export async function fetchSnapshotArchives(): Promise<{ month: string; snap: Snapshot }[]> {
   if (!SNAPSHOTS_DB) return [];
   const pages = await queryAll(SNAPSHOTS_DB);

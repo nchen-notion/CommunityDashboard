@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Inter, Source_Serif_4 } from "next/font/google";
 import { RefreshButton } from "@/components/RefreshButton";
+import { SnapshotButton } from "@/components/SnapshotButton";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -50,7 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NotionMark />
                 <span className="hidden sm:inline">Community Dashboard</span>
               </Link>
-              <RefreshButton />
+              <div className="flex items-center gap-2">
+                <SnapshotButton />
+                <RefreshButton />
+              </div>
             </div>
             <nav className="scrollbar-none mt-2 flex items-center gap-5 overflow-x-auto text-xs text-muted pb-3">
               <Link href="/" className="transition-colors hover:text-ink">Reach</Link>
