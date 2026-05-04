@@ -31,10 +31,10 @@ jobs:
           LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
           LUMA_CALENDAR_ID: ${{ secrets.LUMA_CALENDAR_ID }}
         run: |
-          python3 enricher/main.py
-          python3 campus_leaders/linkedin_followers.py
-          python3 groups/main.py
-          python3 luma/main.py
+          python3 enricher/main.py || echo "enricher failed, continuing"
+          python3 campus_leaders/linkedin_followers.py || echo "campus leaders failed, continuing"
+          python3 groups/main.py || echo "groups failed, continuing"
+          python3 luma/main.py || echo "luma failed, continuing"
           python3 dashboard/scripts/generate_snapshot.py
 
       - name: Commit snapshot JSON
