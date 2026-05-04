@@ -15,6 +15,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
@@ -117,7 +118,8 @@ def build_notion_properties(snap: dict, month_key: str) -> dict:
     g = snap["groups"]
     total = a["total"] + cl["total"] + g["total"]
     return {
-        "Month": {"title": [{"text": {"content": month_key}}]},
+        "Name": {"title": [{"text": {"content": month_key}}]},
+        "Month": {"date": {"start": f"{month_key}-01"}},
         "Generated At": {"date": {"start": snap["generated_at"]}},
         "Total Reach": {"number": total},
         "Ambassador Members": {"number": a["rows"]},
@@ -159,7 +161,7 @@ def upsert_notion_snapshot(snap: dict, month_key: str):
     r = requests.post(
         f"https://api.notion.com/v1/databases/{SNAPSHOTS_DB}/query",
         headers=HEADERS,
-        json={"filter": {"property": "Month", "title": {"equals": month_key}}},
+        json={"filter": {"property": "Name", "title": {"equals": month_key}}},
     )
     r.raise_for_status()
     results = r.json().get("results", [])
@@ -202,7 +204,7 @@ def main():
         "groups": groups_snapshot(),
     }
 
-    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    month_key = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m")
 
     data_dir = Path(__file__).resolve().parent.parent / "public" / "data"
     archive_dir = data_dir / "snapshots"

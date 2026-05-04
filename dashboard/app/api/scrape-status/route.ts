@@ -32,5 +32,9 @@ export async function GET(): Promise<Response> {
     return Response.json({ running: true, started_at: run.created_at });
   }
 
-  return Response.json({ running: false, completed_at: run.updated_at });
+  return Response.json({
+    running: false,
+    completed_at: run.updated_at,
+    conclusion: run.conclusion,
+  });
 }

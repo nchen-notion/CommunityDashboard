@@ -44,7 +44,7 @@ export function RefreshButton() {
         const data = await res.json();
         if (!data.running && mountedRef.current) {
           stopPolling();
-          setStatus("done");
+          setStatus(data.conclusion === "success" ? "done" : "error");
           router.refresh(); // re-fetches all server component data (live Notion + archives)
           setTimeout(() => {
             if (mountedRef.current) setStatus("idle");

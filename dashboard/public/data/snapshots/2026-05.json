@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-05-01T05:36:51.893244+00:00",
+  "generated_at": "2026-05-04T22:24:05.133069+00:00",
   "ambassadors": {
-    "rows": 407,
-    "total": 25482350,
+    "rows": 980,
+    "total": 5072824,
     "platforms": {
-      "YouTube": 20481434,
+      "YouTube": 1598354,
       "Instagram": 1030718,
-      "TikTok": 2185594,
+      "TikTok": 684849,
       "Twitter": 776492,
-      "Notion templates": 13852,
-      "LinkedIn": 994260
+      "Notion templates": 1150,
+      "LinkedIn": 981261
     }
   },
   "campus_leaders": {
@@ -21,14 +21,14 @@
   },
   "groups": {
     "rows": 155,
-    "total": 1894157,
+    "total": 1897104,
     "platforms": {
       "Facebook": 1227947,
       "Meetup": 4018,
       "Peatix": 426,
       "Circle": 420,
-      "LinkedIn": 9465,
-      "Twitter": 62938,
+      "LinkedIn": 12330,
+      "Twitter": 63020,
       "Reddit": 498552,
       "Discord": 54105,
       "Connpass": 186,

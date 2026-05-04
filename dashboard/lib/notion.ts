@@ -210,16 +210,25 @@ export async function fetchTopGroups(n = 10): Promise<GroupRow[]> {
     .slice(0, n);
 }
 
+function easternMonth(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+  }).format(new Date());
+}
+
 export async function writeSnapshot(snap: Snapshot): Promise<void> {
   if (!SNAPSHOTS_DB) throw new Error("NOTION_SNAPSHOTS_DATABASE_ID not set");
-  const month = new Date().toISOString().slice(0, 7);
+  const month = easternMonth();
   const a = snap.ambassadors;
   const cl = snap.campus_leaders;
   const g = snap.groups;
   const total = a.total + cl.total + g.total;
 
   const properties: Record<string, unknown> = {
-    "Month": { title: [{ text: { content: month } }] },
+    "Name": { title: [{ text: { content: month } }] },
+    "Month": { date: { start: `${month}-01` } },
     "Generated At": { date: { start: snap.generated_at } },
     "Total Reach": { number: total },
     "Ambassador Members": { number: a.rows },
@@ -255,7 +264,7 @@ export async function writeSnapshot(snap: Snapshot): Promise<void> {
   const search = await fetch(`https://api.notion.com/v1/databases/${SNAPSHOTS_DB}/query`, {
     method: "POST",
     headers: HEADERS,
-    body: JSON.stringify({ filter: { property: "Month", title: { equals: month } } }),
+    body: JSON.stringify({ filter: { property: "Name", title: { equals: month } } }),
   });
   if (!search.ok) {
     throw new Error(`Snapshot DB query failed: ${search.status} ${await search.text()}`);
@@ -287,7 +296,7 @@ export async function fetchSnapshotArchives(): Promise<{ month: string; snap: Sn
     .map((page) => {
       const p = page.properties as Record<string, Record<string, unknown>>;
       const n = (key: string): number => (p[key]?.number as number) ?? 0;
-      const month = ((p["Month"]?.title as Array<{ plain_text?: string }>)?.[0]?.plain_text ?? "").trim();
+      const month = ((p["Name"]?.title as Array<{ plain_text?: string }>)?.[0]?.plain_text ?? "").trim();
       const generated_at = (p["Generated At"]?.date as { start?: string } | null)?.start ?? new Date().toISOString();
       if (!month) return null;
       return {
