@@ -257,20 +257,26 @@ export async function writeSnapshot(snap: Snapshot): Promise<void> {
     headers: HEADERS,
     body: JSON.stringify({ filter: { property: "Month", title: { equals: month } } }),
   });
-  const { results } = await search.json() as { results: Array<{ id: string }> };
+  if (!search.ok) {
+    throw new Error(`Snapshot DB query failed: ${search.status} ${await search.text()}`);
+  }
+  const searchData = await search.json() as { results?: Array<{ id: string }> };
+  const results = searchData.results ?? [];
 
-  if (results.length > 0) {
-    await fetch(`https://api.notion.com/v1/pages/${results[0].id}`, {
-      method: "PATCH",
-      headers: HEADERS,
-      body: JSON.stringify({ properties }),
-    });
-  } else {
-    await fetch("https://api.notion.com/v1/pages", {
-      method: "POST",
-      headers: HEADERS,
-      body: JSON.stringify({ parent: { database_id: SNAPSHOTS_DB }, properties }),
-    });
+  const write = results.length > 0
+    ? await fetch(`https://api.notion.com/v1/pages/${results[0].id}`, {
+        method: "PATCH",
+        headers: HEADERS,
+        body: JSON.stringify({ properties }),
+      })
+    : await fetch("https://api.notion.com/v1/pages", {
+        method: "POST",
+        headers: HEADERS,
+        body: JSON.stringify({ parent: { database_id: SNAPSHOTS_DB }, properties }),
+      });
+  if (!write.ok) {
+    const verb = results.length > 0 ? "update" : "create";
+    throw new Error(`Snapshot ${verb} failed: ${write.status} ${await write.text()}`);
   }
 }
 

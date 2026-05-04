@@ -5,18 +5,27 @@ type Status = "idle" | "running" | "done" | "error";
 
 export function SnapshotButton() {
   const [status, setStatus] = useState<Status>("idle");
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   async function handleClick() {
     if (status === "running") return;
     setStatus("running");
+    setErrorMsg("");
     try {
       const res = await fetch("/api/snapshot", { method: "POST" });
       const data = await res.json();
-      setStatus(data.ok ? "done" : "error");
-    } catch {
+      if (data.ok) {
+        setStatus("done");
+      } else {
+        setStatus("error");
+        setErrorMsg(data.message ?? "Unknown error");
+        console.error("[snapshot]", data.message);
+      }
+    } catch (e) {
       setStatus("error");
+      setErrorMsg(e instanceof Error ? e.message : "Network error");
     }
-    setTimeout(() => setStatus("idle"), 3000);
+    setTimeout(() => setStatus("idle"), 5000);
   }
 
   const label =
@@ -29,6 +38,7 @@ export function SnapshotButton() {
     <button
       onClick={handleClick}
       disabled={status === "running"}
+      title={status === "error" ? errorMsg : undefined}
       className={[
         "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
         status === "idle"    && "border border-rule text-muted hover:border-ink hover:text-ink",
