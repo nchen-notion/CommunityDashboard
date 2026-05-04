@@ -14,6 +14,7 @@ NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID", "")
 APIFY_ACTOR_INSTAGRAM = os.getenv("APIFY_ACTOR_INSTAGRAM", "apify/instagram-profile-scraper")
 APIFY_ACTOR_TIKTOK = os.getenv("APIFY_ACTOR_TIKTOK", "clockworks/tiktok-profile-scraper")
 APIFY_ACTOR_TWITTER = os.getenv("APIFY_ACTOR_TWITTER", "apidojo/twitter-scraper-lite")
+APIFY_ACTOR_LINKEDIN = os.getenv("APIFY_ACTOR_LINKEDIN", "apimaestro/linkedin-profile-detail")
 
 MISSING = [k for k, v in {
     "APIFY_TOKEN": APIFY_TOKEN,

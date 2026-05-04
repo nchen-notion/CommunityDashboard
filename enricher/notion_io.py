@@ -14,6 +14,7 @@ URL_FIELDS = {
     "notion_templates": "Notion templates",
     "twitter": "Twitter",
     "tiktok": "TikTok",
+    "linkedin": "LinkedIn",
 }
 
 COUNT_FIELDS = {
@@ -22,6 +23,7 @@ COUNT_FIELDS = {
     "notion_templates": "Templates Made",
     "twitter": "Twitter Followers",
     "tiktok": "TikTok Followers",
+    "linkedin": "LinkedIn Followers",
 }
 
 

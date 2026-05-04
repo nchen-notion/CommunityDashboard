@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import MISSING, NOTION_DATABASE_ID
 import notion_io
-from sources import youtube, instagram, tiktok, twitter, notion_templates
+from sources import youtube, instagram, tiktok, twitter, notion_templates, linkedin
 
 PLATFORMS = {
     "youtube": youtube,
@@ -15,6 +15,7 @@ PLATFORMS = {
     "tiktok": tiktok,
     "twitter": twitter,
     "notion_templates": notion_templates,
+    "linkedin": linkedin,
 }
 
 
