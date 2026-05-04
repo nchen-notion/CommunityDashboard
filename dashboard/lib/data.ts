@@ -1,6 +1,12 @@
-import fs from "node:fs";
-import path from "node:path";
 import { unstable_cache } from "next/cache";
+
+function easternMonth(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+  }).format(new Date());
+}
 import {
   fetchLiveSnapshot,
   fetchEvents,
@@ -102,7 +108,7 @@ type LiveTotals = { snap: Snapshot; eventsTotal: number };
 
 export async function loadHistory(live?: LiveTotals): Promise<HistoryPoint[]> {
   const archives = await readArchives();
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = easternMonth();
   const points: HistoryPoint[] = archives.map(({ month, snap }) => ({
     month,
     ambassadors: snap.ambassadors.total,
@@ -190,7 +196,7 @@ export async function loadDataSourceHistory(live?: LiveTotals): Promise<{
   rows: DataSourceRow[];
 }> {
   const archives = await readArchives();
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = easternMonth();
   const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
   const allEntries = live && !hasCurrentMonth
     ? [...archives, { month: currentMonth, snap: live.snap }]
@@ -225,7 +231,7 @@ export async function loadPlatformHistory(live?: LiveTotals): Promise<{
   platforms: string[];
 }> {
   const archives = await readArchives();
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = easternMonth();
   const hasCurrentMonth = archives.some((a) => a.month === currentMonth);
   const allEntries = live && !hasCurrentMonth
     ? [...archives, { month: currentMonth, snap: live.snap }]
