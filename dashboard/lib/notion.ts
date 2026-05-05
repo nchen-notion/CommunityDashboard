@@ -298,7 +298,7 @@ export async function fetchSnapshotArchives(): Promise<{ month: string; snap: Sn
       const n = (key: string): number => (p[key]?.number as number) ?? 0;
       const month = ((p["Name"]?.title as Array<{ plain_text?: string }>)?.[0]?.plain_text ?? "").trim();
       const generated_at = (p["Generated At"]?.date as { start?: string } | null)?.start ?? new Date().toISOString();
-      if (!month) return null;
+      if (!/^\d{4}-\d{2}$/.test(month)) return null;
       return {
         month,
         snap: {

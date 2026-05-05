@@ -68,13 +68,13 @@ export type Snapshot = {
 const _cachedSnapshot = unstable_cache(
   () => fetchLiveSnapshot(),
   ["live-snapshot"],
-  { revalidate: 1800 },
+  { revalidate: 1800, tags: ["dashboard-data"] },
 );
 
 const _cachedEvents = unstable_cache(
   () => fetchEvents(),
   ["luma-events"],
-  { revalidate: 1800 },
+  { revalidate: 1800, tags: ["dashboard-data"] },
 );
 
 export async function loadSnapshot(): Promise<Snapshot> {
@@ -97,7 +97,7 @@ export type PlatformHistoryPoint = {
 const _cachedArchives = unstable_cache(
   () => fetchSnapshotArchives(),
   ["snapshot-archives"],
-  { revalidate: 6 * 3600 },
+  { revalidate: 6 * 3600, tags: ["dashboard-data"] },
 );
 
 async function readArchives(): Promise<{ month: string; snap: Snapshot }[]> {
@@ -267,19 +267,19 @@ export async function loadEvents(): Promise<LumaEvent[]> {
 const _cachedTopAmbassadors = unstable_cache(
   () => fetchTopAmbassadors(),
   ["top-ambassadors"],
-  { revalidate: 1800 },
+  { revalidate: 1800, tags: ["dashboard-data"] },
 );
 
 const _cachedTopCampusLeaders = unstable_cache(
   () => fetchTopCampusLeaders(),
   ["top-campus-leaders"],
-  { revalidate: 1800 },
+  { revalidate: 1800, tags: ["dashboard-data"] },
 );
 
 const _cachedTopGroups = unstable_cache(
   () => fetchTopGroups(),
   ["top-groups"],
-  { revalidate: 1800 },
+  { revalidate: 1800, tags: ["dashboard-data"] },
 );
 
 export async function loadTopAmbassadors(): Promise<AmbassadorRow[]> {

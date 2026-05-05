@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { fetchLiveSnapshot, writeSnapshot } from "@/lib/notion";
 
 export async function POST(req: Request): Promise<Response> {
@@ -12,6 +12,7 @@ export async function POST(req: Request): Promise<Response> {
       : undefined;
     const snap = await fetchLiveSnapshot();
     await writeSnapshot(snap, month);
+    revalidateTag("dashboard-data");
     revalidatePath("/", "layout");
     return Response.json({ ok: true, month });
   } catch (err) {
