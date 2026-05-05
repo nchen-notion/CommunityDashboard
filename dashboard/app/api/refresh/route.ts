@@ -1,10 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import { isAdminAuthed, unauthorized } from "@/lib/admin";
+
 const GH_TOKEN = process.env.GH_PAT ?? "";
 const REPO = "nchen-notion/CommunityDashboard";
 const WORKFLOW = "monthly-snapshot.yml";
 
 export async function POST(): Promise<Response> {
+  if (!isAdminAuthed()) return unauthorized();
   if (!GH_TOKEN) {
     return Response.json(
       { ok: false, message: "GH_PAT not configured" },
