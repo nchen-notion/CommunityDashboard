@@ -218,9 +218,9 @@ function easternMonth(): string {
   }).format(new Date());
 }
 
-export async function writeSnapshot(snap: Snapshot): Promise<void> {
+export async function writeSnapshot(snap: Snapshot, monthOverride?: string): Promise<void> {
   if (!SNAPSHOTS_DB) throw new Error("NOTION_SNAPSHOTS_DATABASE_ID not set");
-  const month = easternMonth();
+  const month = monthOverride && /^\d{4}-\d{2}$/.test(monthOverride) ? monthOverride : easternMonth();
   const a = snap.ambassadors;
   const cl = snap.campus_leaders;
   const g = snap.groups;
