@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-07-01T09:40:43.095235+00:00",
+  "generated_at": "2026-08-01T08:15:12.019913+00:00",
   "ambassadors": {
     "rows": 980,
-    "total": 5100970,
+    "total": 5117777,
     "platforms": {
       "YouTube": 1598354,
       "Instagram": 1030718,
       "TikTok": 684849,
       "Twitter": 776492,
       "Notion templates": 1150,
-      "LinkedIn": 1009407
+      "LinkedIn": 1026214
     }
   },
   "campus_leaders": {
     "rows": 887,
-    "total": 1177832,
+    "total": 1208164,
     "platforms": {
-      "LinkedIn": 1177832
+      "LinkedIn": 1208164
     }
   },
   "groups": {
